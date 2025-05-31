@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.special as sp
 from scipy.optimize import minimize
-import generate_homogeneous_exp_samples as generate_samples
 
 def homogeneous_probabilities(N, theta, h):
     """
@@ -334,7 +333,7 @@ if __name__ == "__main__":
     # --------------------------
     # 2) Sample data
     # --------------------------
-    sample_size = 10000
+    sample_size = 100
     samples = sample_counts(N, true_theta, h, size=sample_size)
     print("\nFirst 20 samples:", samples[:20])
     print("Empirical freq.:", 
@@ -371,5 +370,5 @@ if __name__ == "__main__":
     # 6) Sample patterns
     # --------------------------
     print("\nSampling patterns...")
-    patterns = sample_patterns(N, true_theta, h, size=20)
+    patterns = sample_patterns(N, true_theta, h, size=5)
     print("Sampled patterns:\n", patterns)
