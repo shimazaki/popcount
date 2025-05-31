@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import model_homogeneous_exp as probability
 
-def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta):
+def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
     """
     Create a figure comparing true and estimated probabilities and parameters.
     
@@ -24,6 +24,8 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta)
         True model parameters
     est_theta : ndarray
         Estimated model parameters
+    Sigma : ndarray, optional
+        Posterior covariance matrix for parameter uncertainty
     """
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
 
@@ -48,9 +50,17 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta)
     ax2.set_title('Log Scale')
     ax2.grid(True, alpha=0.3)
 
-    # Plot parameter comparison
-    ax3.plot(range(1, N+1), true_theta, 'o-', label='True θ')
-    ax3.plot(range(1, N+1), est_theta, 'x-', label='Estimated θ')
+    # Plot parameter comparison with error bars
+    x = np.arange(1, N+1)
+    if Sigma is not None:
+        # Compute standard errors from diagonal of covariance matrix
+        std_errors = np.sqrt(np.diag(Sigma))
+        ax3.errorbar(x, est_theta, yerr=std_errors, fmt='x-', 
+                    label='Estimated θ', capsize=5, capthick=1)
+    else:
+        ax3.plot(x, est_theta, 'x-', label='Estimated θ')
+    
+    ax3.plot(x, true_theta, 'o-', label='True θ')
     ax3.legend()
     ax3.set_xlabel('Parameter index (k)')
     ax3.set_ylabel('Parameter value (θₖ)')
@@ -75,12 +85,12 @@ if __name__ == "__main__":
     # Generate samples and fit using MAP with EM
     sample_size = 5000
     samples = probability.sample_counts(N, true_theta, h, size=sample_size)
-    q = np.ones(N) * 10.0  # prior variances
+    q = np.ones(N) * 1.0  # prior variances
     theta0 = np.zeros(N)
-    q, theta_map, Sigma, res = probability.em_update(N, samples, h, q, theta0)
+    theta_map, Sigma, q, res = probability.em_update(N, samples, h, q, theta0)
     est_probs = probability.homogeneous_probabilities(N, theta_map, h)
 
     # Create and save figure
-    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_map)
-    plt.savefig('fig/modelhomogeneous_exp_pmf.png', dpi=300, bbox_inches='tight')
+    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_map, Sigma)
+    plt.savefig('fig/model_homogeneous_exp_fit.png', dpi=300, bbox_inches='tight')
     plt.show()

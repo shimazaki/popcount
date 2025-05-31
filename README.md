@@ -4,6 +4,11 @@ Author: Hideaki Shimazaki
 
 This repository contains code for fitting a population count model using maximum likelihood and Bayesian methods.
 
+## Reference
+
+This implementation is based on the paper:
+- Rodríguez-Domínguez, U., & Shimazaki, H. (2023). [Alternating Shrinking Higher-order Interactions for Sparse Neural Population Activity](https://arxiv.org/abs/2308.13257). arXiv preprint arXiv:2308.13257.
+
 ## Model
 
 The model is defined by the probability mass function:
@@ -78,7 +83,7 @@ from model_homogeneous_exp import em_update
 
 # Fit model using MAP with EM
 q = np.ones(N) * 10.0  # prior variances
-q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
+theta_map, Sigma, q, res = em_update(N, samples, h, q, theta0)
 ```
 
 ## Project Structure
