@@ -7,6 +7,7 @@ Author: Hideaki Shimazaki
 import numpy as np
 import scipy.special as sp
 from scipy.optimize import minimize
+from tqdm import tqdm
 
 def homogeneous_probabilities(N, theta, h):
     """
@@ -177,7 +178,7 @@ def compute_posterior_covariance(N, theta_map, h, q, M):
     Sigma = np.linalg.inv(H)
     return Sigma
 
-def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
+def em_update(N, samples, h, q_init, theta0=None, max_iter=100, tol=1e-6):
     """
     Empirical-Bayes EM algorithm to update prior variances q_j.
     
@@ -195,10 +196,10 @@ def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
         tol (float): Convergence tolerance
     
     Returns:
-        tuple: (q, theta_map, Sigma, res) where
-            q: Updated prior variances
+        tuple: (theta_map, Sigma, q, res) where
             theta_map: Final MAP estimate
             Sigma: Posterior covariance
+            q: Updated prior variances
             res: Optimization result
     """
     S = compute_sufficient_statistics(samples, N)
@@ -206,7 +207,7 @@ def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
     q = q_init.copy()
     theta0 = np.zeros(N) if theta0 is None else theta0
 
-    for itr in range(max_iter):
+    for itr in tqdm(range(max_iter), desc="EM iteration"):
         # E-step: Find MAP estimate
         res = estimate_map_parameters(N, S, M, h, q, theta0)
         theta_map = res.x
@@ -222,7 +223,7 @@ def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
             break
         q, theta0 = q_new, theta_map
         
-    return q, theta_map, Sigma, res
+    return theta_map, Sigma, q, res
 
 def estimate_ml_parameters(N, ns, h, theta0=None):
     """
@@ -339,7 +340,7 @@ if __name__ == "__main__":
     # --------------------------
     # 2) Sample data
     # --------------------------
-    sample_size = 100
+    sample_size = 10000
     samples = sample_counts(N, true_theta, h, size=sample_size)
     print("\nFirst 20 samples:", samples[:20])
     print("Empirical freq.:", 
@@ -359,8 +360,8 @@ if __name__ == "__main__":
     # 4) MAP‐fit θ with EM
     # --------------------------
     print("\nFitting using MAP with EM...")
-    q = np.ones(N) * 10.0  # prior variances
-    q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
+    q = np.ones(N) * 1.0  # prior variances
+    theta_map, Sigma, q, res = em_update(N, samples, h, q, theta0)
     print("MAP‐Estimated θ:", theta_map)
     print("Log‐posterior:", -res.fun)
 

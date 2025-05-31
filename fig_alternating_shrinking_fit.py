@@ -88,7 +88,7 @@ if __name__ == "__main__":
     theta0 = np.zeros(N)
     def h(n):
         return 1
-    q, theta_map, Sigma, res = probability.em_update(N, samples, h, q, theta0)
+    theta_map, Sigma, q, res = probability.em_update(N, samples, h, q, theta0)
     est_probs = probability.homogeneous_probabilities(N, theta_map, h)
 
     # Create and save figure
