@@ -14,7 +14,7 @@ This repository contains implementations of various population count models, inc
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/popcount.git
+git clone https://github.com/shimazaki/popcount.git
 cd popcount
 ```
 
