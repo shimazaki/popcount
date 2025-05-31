@@ -1,10 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import example_homogeneous_exp_bayes
+import model_homogeneous_exp as probability
+import generate_homogeneous_exp_samples as generate_samples
 
-true_probs = example_homogeneous_exp_bayes.true_probs
-est_probs = example_homogeneous_exp_bayes.est_probs
-N = example_homogeneous_exp_bayes.N
+# Define parameters
+N = 10
+true_theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
+
+def h(n):
+    return 1  # here h(n) ≡ 1
+
+# Compute true probabilities
+true_probs = probability.homogeneous_probabilities(N, true_theta, h)
+
+# Generate samples and fit using MAP with EM
+sample_size = 5000
+samples = generate_samples.sample_counts(N, true_theta, h, size=sample_size)
+q = np.ones(N) * 10.0  # prior variances
+theta0 = np.zeros(N)
+q, theta_map, Sigma, res = probability.em_update(N, samples, h, q, theta0)
+est_probs = probability.homogeneous_probabilities(N, theta_map, h)
 
 # Create figure with three subplots
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
@@ -25,13 +40,11 @@ ax2.set_yscale('log')
 ax2.set_title('Log Scale')
 
 # Right subplot - theta comparison
-ax3.plot(range(1, N+1), example_homogeneous_exp_bayes.true_theta, 'o-', label='True theta')
-ax3.plot(range(1, N+1), example_homogeneous_exp_bayes.theta_est, 'x-', label='Estimated theta')
+ax3.plot(range(1, N+1), true_theta, 'o-', label='True theta')
+ax3.plot(range(1, N+1), theta_map, 'x-', label='Estimated theta')
 ax3.legend()
 ax3.set_xlabel('k')
 ax3.set_title('Theta Comparison')
-
-
 
 plt.tight_layout()
 plt.savefig('fig/probabilities.png')

@@ -84,8 +84,6 @@ q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
 - `model_homogeneous_exp.py`: Core implementation with ML and MAP estimation
 - `generate_homogeneous_exp_samples.py`: Sample generation utilities
 - `figure_homogeneous_exp.py`: Visualization tools
-- `example_homogeneous_exp.py`: Basic ML estimation examples
-- `example_homogeneous_exp_bayes.py`: MAP estimation with EM examples
 
 ## License
 
