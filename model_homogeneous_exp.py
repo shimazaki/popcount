@@ -1,188 +1,266 @@
-import numpy
-import scipy.special
+import numpy as np
+import scipy.special as sp
 from scipy.optimize import minimize
+import generate_homogeneous_exp_samples as generate_samples
 
 def homogeneous_probabilities(N, theta, h):
     """
-    Compute the normalized weights
-        P[n] = (N choose n) * h(n) * exp[ Σ_{k=1}^n (n choose k) * theta[k] ] / Z
-    for n = 0…N, where
-        Z = Σ_{n=0}^N (N choose n) * h(n) * exp[ Σ_{k=1}^n (n choose k) * theta[k] ].
-
-    Parameters
-    ----------
-    N : int
-        Total number of items.
-    theta : sequence of float, length N
-        Natural parameters θ₁…θ_N.
-    h : callable
-        Weight function h(n).
-
-    Returns
-    -------
-    probs : ndarray, shape (N+1,)
-        Normalized weights P[0], P[1], …, P[N].
+    Compute probabilities P(n) for all n=0..N using the homogeneous model.
+    
+    Args:
+        N (int): Maximum count value
+        theta (array): Model parameters θ_k for k=1..N
+        h (callable): Base rate function h(n)
+    
+    Returns:
+        array: P(n) for n=0..N
     """
-    # prepend zero so that theta_internal[k] = θ_k
-    theta_internal = [0.0] + list(theta)
-    # n = 0…N
-    Ns = numpy.arange(0, N + 1)
-    # exponent for each n: Σ_{k=1}^n (n choose k) * θ_k
-    exponents = numpy.array([
-        sum(scipy.special.comb(n, k) * theta_internal[k] for k in range(1, n + 1))
-        for n in Ns
+    logP, _ = log_homogeneous_probabilities(N, theta, h)
+    return np.exp(logP)
+
+def log_homogeneous_probabilities(N, theta, h):
+    """
+    Compute log probabilities and log partition function for the homogeneous model.
+    
+    The model is defined as:
+        P(n) = C(N,n) * h(n) * exp(Σ_{k=1}^n C(n,k)*θ_k) / Z(θ)
+    
+    Args:
+        N (int): Maximum count value
+        theta (array): Model parameters θ_k for k=1..N
+        h (callable): Base rate function h(n)
+    
+    Returns:
+        tuple: (logP, logZ) where
+            logP[n] = log P(n) for n=0..N
+            logZ = log partition function Z(θ)
+    """
+    # Pad theta with 0 for k=0
+    theta_int = np.concatenate(([0.0], theta))
+    ns = np.arange(N+1)
+
+    # Compute log binomial coefficients C(N,n)
+    log_binom = (sp.gammaln(N+1)
+               - sp.gammaln(ns+1)
+               - sp.gammaln(N-ns+1))
+    
+    # Compute log base rates h(n)
+    log_h = np.log([h(n) for n in ns])
+    
+    # Compute exponent terms Σ_{k=1}^n C(n,k)*θ_k
+    exponents = np.array([
+        sum(sp.comb(n, k) * theta_int[k] for k in range(1, n+1))
+        for n in ns
     ])
-    # binomial coefficients (N choose n)
-    binoms_Nn = numpy.array([scipy.special.comb(N, n) for n in Ns])
-    # weight h(n)
-    h_vals = numpy.array([h(n) for n in Ns])
-    # unnormalized weights
-    weights = binoms_Nn * h_vals * numpy.exp(exponents)
-    # normalize
-    Z = weights.sum()
-    return weights / Z
 
-def expected_binomial_coefficient(N, theta, k, h):
-    """
-    Compute E[ C(n, k) ] under the distribution P(n) returned by homogeneous_probabilities.
-
-    Parameters
-    ----------
-    N : int
-        Total number of items.
-    theta : sequence of float, length N
-        Natural parameters θ₁…θ_N.
-    k : int
-        The lower index in C(n, k).
-    h : callable
-        Weight function h(n).
-
-    Returns
-    -------
-    float
-        E[ C(n, k) ].
-    """
-    P = homogeneous_probabilities(N, theta, h)
-    ns = numpy.arange(0, N + 1)
-    c_nk = scipy.special.comb(ns, k)
-    return numpy.dot(P, c_nk)
+    # Combine terms and normalize
+    L = log_binom + log_h + exponents
+    logZ = sp.logsumexp(L)  # Compute log partition function
+    logP = L - logZ         # Normalize to get log probabilities
+    return logP, logZ
 
 def compute_sufficient_statistics(ns, N):
     """
-    Compute the sufficient statistics S_k = Σ_i C(n_i, k) for k = 1…N.
-
-    Parameters
-    ----------
-    ns : sequence of int
-        Observed counts n_i.
-    N : int
-        Total number of items.
-
-    Returns
-    -------
-    S : ndarray, shape (N,)
-        S[k-1] = Σ_i C(n_i, k).
+    Compute sufficient statistics S_k = Σ_i C(n_i, k) for k=1..N.
+    
+    Args:
+        ns (array): Observed counts n_i
+        N (int): Maximum count value
+    
+    Returns:
+        array: S[k-1] = Σ_i C(n_i, k) for k=1..N
     """
-    S = numpy.zeros(N)
-    for n_i in ns:
-        # for k > n_i, comb(n_i, k) = 0 automatically
+    S = np.zeros(N)
+    for n in ns:
         for k in range(1, N+1):
-            S[k-1] += scipy.special.comb(n_i, k)
+            S[k-1] += sp.comb(n, k)
     return S
 
-def compute_partition(N, theta, h):
+def compute_map_gradient(N, S, M, h, q, theta):
     """
-    Compute the partition function
-        Z(θ) = Σ_{m=0}^N C(N,m) h(m) exp[ Σ_{k=1}^m C(m,k) θ_k ].
+    Compute gradient of log-posterior for MAP estimation.
+    
+    The gradient is:
+        ∇_j = S_j - M*E[C(n,j)] - θ_j/q_j
+    
+    Args:
+        N (int): Maximum count value
+        S (array): Sufficient statistics
+        M (int): Number of samples
+        h (callable): Base rate function
+        q (array): Prior variances
+        theta (array): Current parameter values
+    
+    Returns:
+        array: Gradient vector
     """
-    theta_internal = [0.0] + list(theta)
-    ms = numpy.arange(0, N+1)
-    # exponent for each m
-    exponents = numpy.array([
-        sum(scipy.special.comb(m, k) * theta_internal[k] for k in range(1, m+1))
-        for m in ms
-    ])
-    binoms = numpy.array([scipy.special.comb(N, m) for m in ms])
-    h_vals = numpy.array([h(m) for m in ms])
-    weights = binoms * h_vals * numpy.exp(exponents)
-    return weights.sum()
+    logP, _ = log_homogeneous_probabilities(N, theta, h)
+    Pn = np.exp(logP)
+    ns = np.arange(N+1)
+    
+    # Compute expected sufficient statistics
+    C = np.array([[sp.comb(n, k) for k in range(1, N+1)] for n in ns])
+    E_C = Pn @ C
+    
+    return S - M*E_C - theta/q
 
-def log_likelihood_sufficient(theta, S, M, N, h):
+def estimate_map_parameters(N, S, M, h, q, theta0=None):
     """
-    Compute log‐likelihood
-        L(θ) = Σ_{k=1}^N S_k θ_k − M log Z(θ) + const.
+    Find MAP estimate of θ given sufficient statistics.
+    
+    Args:
+        N (int): Maximum count value
+        S (array): Sufficient statistics
+        M (int): Number of samples
+        h (callable): Base rate function
+        q (array): Prior variances
+        theta0 (array, optional): Initial parameter values
+    
+    Returns:
+        OptimizeResult: Result from scipy.optimize.minimize
     """
-    Z = compute_partition(N, theta, h)
-    return numpy.dot(S, theta) - M * numpy.log(Z)
-
-def compute_map_gradient(theta, S, M, N, h):
-    """
-    Compute ∇_j L = S_j − M E_θ[C(n, j)] for j = 1…N.
-    """
-    # get P(m) = weights/Z
-    # reuse compute_partition to get Z
-    Z = compute_partition(N, theta, h)
-    theta_internal = [0.0] + list(theta)
-    ms = numpy.arange(0, N+1)
-    exponents = numpy.array([
-        sum(scipy.special.comb(m, k) * theta_internal[k] for k in range(1, m+1))
-        for m in ms
-    ])
-    binoms = numpy.array([scipy.special.comb(N, m) for m in ms])
-    h_vals = numpy.array([h(m) for m in ms])
-    weights = binoms * h_vals * numpy.exp(exponents)
-    Pm = weights / Z  # shape (N+1,)
-
-    # build C matrix: shape (N+1, N), C[m, j-1] = C(m, j)
-    C = numpy.array([
-        [scipy.special.comb(m, j) for j in range(1, N+1)]
-        for m in ms
-    ])  # shape (N+1, N)
-
-    # expected C(n, j): E[j-1] = Σ_m P(m) * C(m, j)
-    E = Pm @ C  # shape (N,)
-
-    return S - M * E
-
-def estimate_map_parameters(N, ns, h, theta0=None):
-    """
-    Estimate θ by maximizing L(θ) using only sufficient statistics.
-
-    Returns
-    -------
-    result : OptimizeResult
-    """
-    S = compute_sufficient_statistics(ns, N)
-    M = len(ns)
     if theta0 is None:
-        theta0 = numpy.zeros(N)
+        theta0 = np.zeros(N)
 
-    # Negative log‐likelihood and gradient
-    nll = lambda th: -log_likelihood_sufficient(th, S, M, N, h)
-    grad_nll = lambda th: -compute_map_gradient(th, S, M, N, h)
+    def negative_log_posterior(th):
+        """Negative log-posterior (objective function)"""
+        logP, logZ = log_homogeneous_probabilities(N, th, h)
+        ll = np.dot(S, th) - M*logZ
+        prior = -0.5 * np.sum(th**2 / q)
+        return -(ll + prior)
 
-    result = minimize(
-        fun=nll,
-        x0=theta0,
-        jac=grad_nll,
-        method='BFGS',
-        options={'disp': True}
-    )
-    return result
+    def gradient_negative_log_posterior(th):
+        """Gradient of negative log-posterior"""
+        return -compute_map_gradient(N, S, M, h, q, th)
 
-# --------------------------
+    res = minimize(negative_log_posterior, theta0, 
+                  jac=gradient_negative_log_posterior, 
+                  method='BFGS', 
+                  options={'disp':False})
+    return res
+
+def compute_posterior_covariance(N, theta_map, h, q, M):
+    """
+    Compute posterior covariance matrix using Laplace approximation.
+    
+    The covariance is approximated as:
+        H = M*Cov_C + diag(1/q)
+        Σ ≈ H^{-1}
+    
+    Args:
+        N (int): Maximum count value
+        theta_map (array): MAP estimate of θ
+        h (callable): Base rate function
+        q (array): Prior variances
+        M (int): Number of samples
+    
+    Returns:
+        array: Posterior covariance matrix
+    """
+    logP, _ = log_homogeneous_probabilities(N, theta_map, h)
+    Pn = np.exp(logP)
+    ns = np.arange(N+1)
+
+    # Compute covariance of sufficient statistics
+    C = np.array([[sp.comb(n, k) for k in range(1, N+1)] for n in ns])
+    E1 = Pn @ C
+    E2 = C.T @ (Pn[:,None] * C)
+    Cov_C = E2 - np.outer(E1, E1)
+
+    # Compute Hessian and invert
+    H = M * Cov_C + np.diag(1.0/q)
+    Sigma = np.linalg.inv(H)
+    return Sigma
+
+def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
+    """
+    Empirical-Bayes EM algorithm to update prior variances q_j.
+    
+    The algorithm alternates between:
+        E-step: Find MAP estimate θ_map given current q
+        M-step: Update q_j = θ_map_j^2 + Var(θ_j)
+    
+    Args:
+        N (int): Maximum count value
+        samples (array): Observed counts
+        h (callable): Base rate function
+        q_init (array): Initial prior variances
+        theta0 (array, optional): Initial parameter values
+        max_iter (int): Maximum number of EM iterations
+        tol (float): Convergence tolerance
+    
+    Returns:
+        tuple: (q, theta_map, Sigma, res) where
+            q: Updated prior variances
+            theta_map: Final MAP estimate
+            Sigma: Posterior covariance
+            res: Optimization result
+    """
+    S = compute_sufficient_statistics(samples, N)
+    M = len(samples)
+    q = q_init.copy()
+    theta0 = np.zeros(N) if theta0 is None else theta0
+
+    for itr in range(max_iter):
+        # E-step: Find MAP estimate
+        res = estimate_map_parameters(N, S, M, h, q, theta0)
+        theta_map = res.x
+
+        # Compute posterior variance
+        Sigma = compute_posterior_covariance(N, theta_map, h, q, M)
+        var_theta = np.diag(Sigma)
+
+        # M-step: Update q
+        q_new = theta_map**2 + var_theta
+        if np.max(np.abs(q_new - q)) < tol:
+            q = q_new
+            break
+        q, theta0 = q_new, theta_map
+        
+    return q, theta_map, Sigma, res
+
+# ----------------------------
 # Usage example
-# --------------------------
+# ----------------------------
 if __name__ == "__main__":
-    # Total number of items
+    # --------------------------
+    # 1) Define true model & sample data
+    # --------------------------
     N = 10
-    # Observed counts
-    ns = [2, 3, 3, 1, 4, 2, 3]
-    # Weight function h(n)=n
-    def h(n):
-        return n
+    true_theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
 
-    # Fit θ
-    result = estimate_map_parameters(N, ns, h)
-    print("Estimated θ:", result.x)
-    print("Log‐likelihood:", -result.fun)
+    def h(n):
+        """Base rate function: h(n) = 1 for all n"""
+        return 1
+
+    print("\nTrue θ:", true_theta)
+    true_probs = homogeneous_probabilities(N, true_theta, h)
+    print("True P(n):", true_probs)
+
+    # --------------------------
+    # 2) Sample data
+    # --------------------------
+    sample_size = 10000
+    samples = generate_samples.sample_counts(N, true_theta, h, size=sample_size)
+    print("\nFirst 20 samples:", samples[:20])
+    print("Empirical freq.:", 
+            np.bincount(samples, minlength=N+1) / sample_size)
+
+    # --------------------------
+    # 3) MAP‐fit θ
+    # --------------------------
+    q = np.ones(N) * 10.0  # prior variances
+    theta0 = np.zeros(N)
+
+    print(h)
+
+    q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
+    theta_est = theta_map
+    print("\nMAP‐Estimated θ:", theta_est)
+    print("Log‐posterior:", -res.fun)
+
+    # --------------------------
+    # 4) Show MAP probabilities
+    # --------------------------
+    est_probs = homogeneous_probabilities(N, theta_est, h)
+    print("MAP P(n):", est_probs)

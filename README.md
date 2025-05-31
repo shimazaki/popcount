@@ -45,7 +45,7 @@ pip install -r requirements.txt
 
 ```python
 import numpy as np
-from model_homogeneous_exp_em import homogeneous_probabilities, estimate_ml_parameters
+from model_homogeneous_exp import homogeneous_probabilities, estimate_ml_parameters
 import generate_homogeneous_exp_samples as generate_samples
 
 # Define parameters
@@ -72,7 +72,7 @@ theta_ml = result.x
 ### Example: MAP Estimation with EM
 
 ```python
-from model_homogeneous_exp_em import em_update
+from model_homogeneous_exp import em_update
 
 # Fit model using MAP with EM
 q = np.ones(N) * 10.0  # prior variances
@@ -81,7 +81,7 @@ q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
 
 ## Project Structure
 
-- `model_homogeneous_exp_em.py`: Core implementation with ML and MAP estimation
+- `model_homogeneous_exp.py`: Core implementation with ML and MAP estimation
 - `generate_homogeneous_exp_samples.py`: Sample generation utilities
 - `figure_homogeneous_exp.py`: Visualization tools
 - `example_homogeneous_exp.py`: Basic ML estimation examples

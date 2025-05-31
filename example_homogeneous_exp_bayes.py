@@ -1,6 +1,6 @@
 import numpy
 #import model_homogeneous_exp_bayes as probability
-import model_homogeneous_exp_em as probability
+import model_homogeneous_exp as probability
 import generate_homogeneous_exp_samples as generate_samples
 
 # Set numpy print options for cleaner output
