@@ -1,3 +1,9 @@
+"""
+Visualization tools for the Population Count Model
+
+Author: Hideaki Shimazaki
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import model_homogeneous_exp as probability

@@ -1,3 +1,9 @@
+"""
+Population Count Model with Homogeneous Exponential Family
+
+Author: Hideaki Shimazaki
+"""
+
 import numpy as np
 import scipy.special as sp
 from scipy.optimize import minimize

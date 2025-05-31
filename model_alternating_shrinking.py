@@ -1,3 +1,9 @@
+"""
+Population Count Model with Alternating Shrinking
+
+Author: Hideaki Shimazaki
+"""
+
 import numpy as np
 from scipy.special import comb
 import matplotlib.pyplot as plt

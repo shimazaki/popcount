@@ -1,5 +1,7 @@
 # Population Count Model
 
+Author: Hideaki Shimazaki
+
 This repository contains code for fitting a population count model using maximum likelihood and Bayesian methods.
 
 ## Model
