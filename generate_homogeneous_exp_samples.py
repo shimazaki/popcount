@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.special
 
-import model_homogeneous_exp as probability
+import model_homogeneous_exp_em as probability
 
 def sample_counts(N, theta, h, size):
     """

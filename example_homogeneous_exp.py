@@ -1,5 +1,5 @@
 import numpy
-import model_homogeneous_exp as probability
+import model_homogeneous_exp_em as probability
 import generate_homogeneous_exp_samples as generate_samples
 
 # Set numpy print options for cleaner output
@@ -28,16 +28,16 @@ print("Empirical freq.:",
         numpy.bincount(samples, minlength=N+1) / sample_size)
 
 # --------------------------
-# 3) MAP‐fit θ
+# 3) ML‐fit θ
 # --------------------------
 theta0 = numpy.zeros(N)
-result = probability.estimate_map_parameters(N, samples, h, theta0)
+result = probability.estimate_ml_parameters(N, samples, h, theta0)
 theta_est = result.x
-print("\nMAP‐Estimated θ:", theta_est)
+print("\nML‐Estimated θ:", theta_est)
 print("Log‐likelihood:", -result.fun)
 
 # --------------------------
-# 4) Show MAP probabilities
+# 4) Show ML probabilities
 # --------------------------
 est_probs = probability.homogeneous_probabilities(N, theta_est, h)
-print("MAP P(n):", est_probs)
+print("ML P(n):", est_probs)
