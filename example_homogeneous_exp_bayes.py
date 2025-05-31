@@ -33,10 +33,10 @@ print("Empirical freq.:",
 # --------------------------
 q = numpy.ones(N) * 10.0  # prior variances
 theta0 = numpy.zeros(N)
-result = probability.fit_theta_map(N, samples, h, q, theta0)
-theta_est = result.x
+q, theta_map, Sigma, res = probability.em_update(N, samples, h, q, theta0)
+theta_est = theta_map
 print("\nMAP‐Estimated θ:", theta_est)
-print("Log‐posterior:", -result.fun)
+print("Log‐posterior:", -res.fun)
 
 # --------------------------
 # 4) Show MAP probabilities

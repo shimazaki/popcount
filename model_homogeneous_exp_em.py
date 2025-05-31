@@ -76,7 +76,7 @@ def compute_sufficient_statistics(ns, N):
             S[k-1] += sp.comb(n, k)
     return S
 
-def gradient_map_from_sufficient(N, S, M, h, q, theta):
+def compute_map_gradient(N, S, M, h, q, theta):
     """
     Compute gradient of log-posterior for MAP estimation.
     
@@ -104,7 +104,7 @@ def gradient_map_from_sufficient(N, S, M, h, q, theta):
     
     return S - M*E_C - theta/q
 
-def fit_theta_map_sufficient(N, S, M, h, q, theta0=None):
+def estimate_map_parameters(N, S, M, h, q, theta0=None):
     """
     Find MAP estimate of θ given sufficient statistics.
     
@@ -122,21 +122,24 @@ def fit_theta_map_sufficient(N, S, M, h, q, theta0=None):
     if theta0 is None:
         theta0 = np.zeros(N)
 
-    def nlp(th):
+    def negative_log_posterior(th):
         """Negative log-posterior (objective function)"""
         logP, logZ = log_homogeneous_probabilities(N, th, h)
         ll = np.dot(S, th) - M*logZ
         prior = -0.5 * np.sum(th**2 / q)
         return -(ll + prior)
 
-    def grad_nlp(th):
+    def gradient_negative_log_posterior(th):
         """Gradient of negative log-posterior"""
-        return -gradient_map_from_sufficient(N, S, M, h, q, th)
+        return -compute_map_gradient(N, S, M, h, q, th)
 
-    res = minimize(nlp, theta0, jac=grad_nlp, method='BFGS', options={'disp':False})
+    res = minimize(negative_log_posterior, theta0, 
+                  jac=gradient_negative_log_posterior, 
+                  method='BFGS', 
+                  options={'disp':False})
     return res
 
-def posterior_laplace_stats(N, theta_map, h, q, M):
+def compute_posterior_covariance(N, theta_map, h, q, M):
     """
     Compute posterior covariance matrix using Laplace approximation.
     
@@ -169,7 +172,7 @@ def posterior_laplace_stats(N, theta_map, h, q, M):
     Sigma = np.linalg.inv(H)
     return Sigma
 
-def em_update_q_from_sufficient(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
+def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
     """
     Empirical-Bayes EM algorithm to update prior variances q_j.
     
@@ -200,11 +203,11 @@ def em_update_q_from_sufficient(N, samples, h, q_init, theta0=None, max_iter=20,
 
     for itr in range(max_iter):
         # E-step: Find MAP estimate
-        res = fit_theta_map_sufficient(N, S, M, h, q, theta0)
+        res = estimate_map_parameters(N, S, M, h, q, theta0)
         theta_map = res.x
 
         # Compute posterior variance
-        Sigma = posterior_laplace_stats(N, theta_map, h, q, M)
+        Sigma = compute_posterior_covariance(N, theta_map, h, q, M)
         var_theta = np.diag(Sigma)
 
         # M-step: Update q
@@ -251,7 +254,7 @@ if __name__ == "__main__":
 
     print(h)
 
-    q, theta_map, Sigma, res = em_update_q_from_sufficient(N, samples, h, q, theta0)
+    q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
     theta_est = theta_map
     print("\nMAP‐Estimated θ:", theta_est)
     print("Log‐posterior:", -res.fun)

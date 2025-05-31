@@ -115,7 +115,7 @@ def log_likelihood_sufficient(theta, S, M, N, h):
     Z = compute_partition(N, theta, h)
     return numpy.dot(S, theta) - M * numpy.log(Z)
 
-def gradient_sufficient(theta, S, M, N, h):
+def compute_map_gradient(theta, S, M, N, h):
     """
     Compute ∇_j L = S_j − M E_θ[C(n, j)] for j = 1…N.
     """
@@ -144,7 +144,7 @@ def gradient_sufficient(theta, S, M, N, h):
 
     return S - M * E
 
-def fit_theta_sufficient(N, ns, h, theta0=None):
+def estimate_map_parameters(N, ns, h, theta0=None):
     """
     Estimate θ by maximizing L(θ) using only sufficient statistics.
 
@@ -159,7 +159,7 @@ def fit_theta_sufficient(N, ns, h, theta0=None):
 
     # Negative log‐likelihood and gradient
     nll = lambda th: -log_likelihood_sufficient(th, S, M, N, h)
-    grad_nll = lambda th: -gradient_sufficient(th, S, M, N, h)
+    grad_nll = lambda th: -compute_map_gradient(th, S, M, N, h)
 
     result = minimize(
         fun=nll,
@@ -183,6 +183,6 @@ if __name__ == "__main__":
         return n
 
     # Fit θ
-    result = fit_theta_sufficient(N, ns, h)
+    result = estimate_map_parameters(N, ns, h)
     print("Estimated θ:", result.x)
     print("Log‐likelihood:", -result.fun)

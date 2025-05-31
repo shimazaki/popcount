@@ -1,6 +1,20 @@
-# Population Count Models
+# Population Count Model
 
-This repository contains implementations of various population count models, including homogeneous exponential models with both EM and Bayesian inference methods.
+This repository contains code for fitting a population count model using maximum likelihood and Bayesian methods.
+
+## Model
+
+The model is defined by the probability mass function:
+
+    P(n) = C(N,n) * h(n) * exp[ Σ_{k=1}^n C(n,k) * θ_k ] / Z(θ)
+
+where:
+- N is the total number of items
+- n is the observed count (0 ≤ n ≤ N)
+- C(n,k) is the binomial coefficient
+- h(n) is a base rate function
+- θ_k are the natural parameters
+- Z(θ) is the partition function
 
 ## Features
 
@@ -31,31 +45,32 @@ pip install -r requirements.txt
 
 ```python
 import numpy as np
-from model_homogeneous_exp_em import homogeneous_probabilities, em_update_q_from_sufficient
+from model_homogeneous_exp_em import homogeneous_probabilities, em_update
 
 # Define parameters
 N = 10
-true_theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
+theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
 
+# Define base rate function
 def h(n):
-    return 1
+    return 1  # here h(n) ≡ 1
 
 # Compute probabilities
-probs = homogeneous_probabilities(N, true_theta, h)
+probs = homogeneous_probabilities(N, theta, h)
 
 # Fit model using EM
-q = np.ones(N) * 10.0
+q = np.ones(N) * 10.0  # prior variances
 theta0 = np.zeros(N)
-q, theta_map, Sigma, res = em_update_q_from_sufficient(N, samples, h, q, theta0)
+q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
 ```
 
 ### Example: Homogeneous Exponential Model with Bayesian Inference
 
 ```python
-from model_homogeneous_exp_bayes import fit_theta_map_sufficient
+from model_homogeneous_exp_bayes import estimate_map_parameters
 
 # Fit model using MAP estimation
-res = fit_theta_map_sufficient(N, S, M, h, q, theta0)
+res = estimate_map_parameters(N, S, M, h, q, theta0)
 theta_map = res.x
 ```
 
