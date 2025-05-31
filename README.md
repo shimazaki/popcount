@@ -20,7 +20,7 @@ where:
 
 - Homogeneous exponential model implementation
 - EM-based parameter estimation
-- Bayesian inference with MAP estimation
+- MAP estimation with and without EM
 - Sample generation utilities
 - Visualization tools
 
@@ -46,6 +46,7 @@ pip install -r requirements.txt
 ```python
 import numpy as np
 from model_homogeneous_exp_em import homogeneous_probabilities, em_update
+import generate_homogeneous_exp_samples as generate_samples
 
 # Define parameters
 N = 10
@@ -54,6 +55,10 @@ theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
 # Define base rate function
 def h(n):
     return 1  # here h(n) ≡ 1
+
+# Generate samples
+sample_size = 5000
+samples = generate_samples.sample_counts(N, theta, h, size=sample_size)
 
 # Compute probabilities
 probs = homogeneous_probabilities(N, theta, h)
@@ -64,24 +69,39 @@ theta0 = np.zeros(N)
 q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
 ```
 
-### Example: Homogeneous Exponential Model with Bayesian Inference
+### Example: Basic MAP Estimation
 
 ```python
-from model_homogeneous_exp_bayes import estimate_map_parameters
+import numpy as np
+from model_homogeneous_exp import estimate_map_parameters
+import generate_homogeneous_exp_samples as generate_samples
+
+# Define parameters
+N = 10
+theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
+
+# Define base rate function
+def h(n):
+    return 1  # here h(n) ≡ 1
+
+# Generate samples
+sample_size = 5000
+samples = generate_samples.sample_counts(N, theta, h, size=sample_size)
 
 # Fit model using MAP estimation
-res = estimate_map_parameters(N, S, M, h, q, theta0)
-theta_map = res.x
+theta0 = np.zeros(N)
+result = estimate_map_parameters(N, samples, h, theta0)
+theta_map = result.x
 ```
 
 ## Project Structure
 
-- `model_homogeneous_exp_em.py`: EM-based parameter estimation
-- `model_homogeneous_exp_bayes.py`: Bayesian inference implementation
+- `model_homogeneous_exp_em.py`: EM-based parameter estimation with MAP
+- `model_homogeneous_exp.py`: Basic MAP estimation
 - `generate_homogeneous_exp_samples.py`: Sample generation utilities
 - `figure_homogeneous_exp.py`: Visualization tools
-- `example_homogeneous_exp.py`: Basic usage examples
-- `example_homogeneous_exp_bayes.py`: Bayesian inference examples
+- `example_homogeneous_exp.py`: Basic MAP estimation examples
+- `example_homogeneous_exp_bayes.py`: EM-based estimation examples
 
 ## License
 
