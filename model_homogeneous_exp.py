@@ -219,6 +219,100 @@ def em_update(N, samples, h, q_init, theta0=None, max_iter=20, tol=1e-6):
         
     return q, theta_map, Sigma, res
 
+def estimate_ml_parameters(N, ns, h, theta0=None):
+    """
+    Estimate θ by maximum likelihood using only sufficient statistics.
+    
+    This is a simpler version of estimate_map_parameters without priors.
+    
+    Args:
+        N (int): Maximum count value
+        ns (array): Observed counts
+        h (callable): Base rate function
+        theta0 (array, optional): Initial parameter values
+    
+    Returns:
+        OptimizeResult: Result from scipy.optimize.minimize
+    """
+    S = compute_sufficient_statistics(ns, N)
+    M = len(ns)
+    if theta0 is None:
+        theta0 = np.zeros(N)
+
+    def negative_log_likelihood(th):
+        """Negative log-likelihood (objective function)"""
+        logP, logZ = log_homogeneous_probabilities(N, th, h)
+        return -(np.dot(S, th) - M*logZ)
+
+    def gradient_negative_log_likelihood(th):
+        """Gradient of negative log-likelihood"""
+        logP, _ = log_homogeneous_probabilities(N, th, h)
+        Pn = np.exp(logP)
+        ns = np.arange(N+1)
+        
+        # Compute expected sufficient statistics
+        C = np.array([[sp.comb(n, k) for k in range(1, N+1)] for n in ns])
+        E_C = Pn @ C
+        
+        return -(S - M*E_C)
+
+    res = minimize(negative_log_likelihood, theta0,
+                  jac=gradient_negative_log_likelihood,
+                  method='BFGS',
+                  options={'disp': True})
+    return res
+
+def sample_counts(N, theta, h, size):
+    """
+    Draw samples of n from P(n) defined by the count distribution.
+
+    Parameters
+    ----------
+    N : int
+        Total number of items.
+    theta : sequence of float, length N
+        Natural parameters θ₁…θ_N.
+    h : callable
+        Weight function h(n).
+    size : int
+        Number of samples to draw.
+
+    Returns
+    -------
+    counts : ndarray of int, shape (size,)
+        Drawn values of n ~ P(n).
+    """
+    # Step 1: sample spike counts
+    probs = homogeneous_probabilities(N, theta, h)
+    counts = np.random.choice(np.arange(N + 1), size=size, p=probs)
+    return counts
+
+def sample_patterns(N, theta, h, size):
+    """
+    Draw binary patterns from the model by first sampling counts, then generating patterns.
+    Parameters
+    ----------
+    N : int
+        Length of each pattern.
+    theta : sequence of float, length N
+        Natural parameters θ₁…θ_N.
+    h : callable
+        Weight function h(n).
+    size : int
+        Number of patterns to generate.
+    Returns
+    -------
+    patterns : ndarray, shape (size, N)
+        Binary patterns with the specified number of ones.
+    """
+    counts = sample_counts(N, theta, h, size)
+    patterns = np.zeros((size, N), dtype=int)
+    for i, k in enumerate(counts):
+        if k > 0:
+            indices = np.random.choice(N, k, replace=False)
+            patterns[i, indices] = 1
+    return patterns
+
 # ----------------------------
 # Usage example
 # ----------------------------
@@ -241,26 +335,41 @@ if __name__ == "__main__":
     # 2) Sample data
     # --------------------------
     sample_size = 10000
-    samples = generate_samples.sample_counts(N, true_theta, h, size=sample_size)
+    samples = sample_counts(N, true_theta, h, size=sample_size)
     print("\nFirst 20 samples:", samples[:20])
     print("Empirical freq.:", 
             np.bincount(samples, minlength=N+1) / sample_size)
 
     # --------------------------
-    # 3) MAP‐fit θ
+    # 3) ML‐fit θ
     # --------------------------
-    q = np.ones(N) * 10.0  # prior variances
+    print("\nFitting using maximum likelihood...")
     theta0 = np.zeros(N)
+    result = estimate_ml_parameters(N, samples, h, theta0)
+    theta_ml = result.x
+    print("ML‐Estimated θ:", theta_ml)
+    print("Log‐likelihood:", -result.fun)
 
-    print(h)
-
+    # --------------------------
+    # 4) MAP‐fit θ with EM
+    # --------------------------
+    print("\nFitting using MAP with EM...")
+    q = np.ones(N) * 10.0  # prior variances
     q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
-    theta_est = theta_map
-    print("\nMAP‐Estimated θ:", theta_est)
+    print("MAP‐Estimated θ:", theta_map)
     print("Log‐posterior:", -res.fun)
 
     # --------------------------
-    # 4) Show MAP probabilities
+    # 5) Show probabilities
     # --------------------------
-    est_probs = homogeneous_probabilities(N, theta_est, h)
-    print("MAP P(n):", est_probs)
+    ml_probs = homogeneous_probabilities(N, theta_ml, h)
+    map_probs = homogeneous_probabilities(N, theta_map, h)
+    print("\nML P(n):", ml_probs)
+    print("MAP P(n):", map_probs)
+
+    # --------------------------
+    # 6) Sample patterns
+    # --------------------------
+    print("\nSampling patterns...")
+    patterns = sample_patterns(N, true_theta, h, size=20)
+    print("Sampled patterns:\n", patterns)

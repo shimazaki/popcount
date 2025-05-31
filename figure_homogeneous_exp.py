@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import model_homogeneous_exp as probability
-import generate_homogeneous_exp_samples as generate_samples
 
 # Define parameters
 N = 10
@@ -15,7 +14,7 @@ true_probs = probability.homogeneous_probabilities(N, true_theta, h)
 
 # Generate samples and fit using MAP with EM
 sample_size = 5000
-samples = generate_samples.sample_counts(N, true_theta, h, size=sample_size)
+samples = probability.sample_counts(N, true_theta, h, size=sample_size)
 q = np.ones(N) * 10.0  # prior variances
 theta0 = np.zeros(N)
 q, theta_map, Sigma, res = probability.em_update(N, samples, h, q, theta0)
