@@ -84,7 +84,7 @@ q, theta_map, Sigma, res = em_update(N, samples, h, q, theta0)
 ## Project Structure
 
 - `model_homogeneous_exp.py`: Core implementation with ML and MAP estimation, including sampling utilities
-- `figure_homogeneous_exp.py`: Visualization tools
+- `fig_homogeneous_exp_fit.py`: Visualization tools for model fitting results
 
 ## License
 
