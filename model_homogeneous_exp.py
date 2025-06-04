@@ -264,7 +264,7 @@ def estimate_ml_parameters(N, ns, h, theta0=None):
 
     res = minimize(negative_log_likelihood, theta0,
                   jac=gradient_negative_log_likelihood,
-                  method='BFGS',
+                  method='L-BFGS-B',
                   options={'disp': True})
     return res
 
