@@ -56,7 +56,7 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     if Sigma is not None:
         # Compute standard errors from diagonal of covariance matrix
         std_errors = np.sqrt(np.diag(Sigma))
-        ax3.errorbar(x, est_theta, yerr=std_errors, fmt='x-', 
+        ax3.errorbar(x, est_theta, yerr=2*std_errors, fmt='x-', 
                     label='Estimated θ', capsize=5, capthick=1)
     else:
         ax3.plot(x, est_theta, 'x-', label='Estimated θ')
