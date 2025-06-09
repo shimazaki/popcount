@@ -141,7 +141,7 @@ def estimate_map_parameters(N, S, M, h, q, theta0=None):
 
     res = minimize(negative_log_posterior, theta0, 
                   jac=gradient_negative_log_posterior, 
-                  method='L-BFGS-B', 
+                  method='BFGS', 
                   options={'disp':False})
     return res
 

@@ -169,11 +169,17 @@ def gibbs_sampler(N, f, Cj_func, h_func, steps=10000, burn_in=1000, seed=None):
 
 if __name__ == "__main__":
     # Parameters
-    N = 100
-    f = 10.0
+    N = 80
+    f = 50.0
+    h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
+
+    #Polylogarithmic exponential distribution
     m = 1.0
     Cj_func = lambda j: 1 / j**m
-    h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
+
+    #Shifted-geometric exponential distribution
+    # tau = 1.0
+    # Cj_func = lambda j: tau**j
 
     # Compute PMF
     pmf = compute_n_spike_pmf_with_func(N, f, Cj_func)
