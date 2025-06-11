@@ -10,19 +10,20 @@ import scipy.special as sp
 from scipy.optimize import minimize
 from tqdm import tqdm
 
-def homogeneous_probabilities(N, K, theta, h):
+def homogeneous_probabilities(N, theta, h):
     """
-    Compute probabilities P(n) for all n=0..N using the K-th order homogeneous model.
+    Compute probabilities P(n) for n=0,...,N for a homogeneous exponential model.
     
     Args:
-        N (int): Maximum count value (system size).
-        K (int): Maximum order of interaction to consider.
-        theta (array): Model parameters θ_k for k=1..K.
-        h (callable): Base rate function h(n).
+        N (int): Maximum count value.
+        theta (array): Parameter values (length K).
+        h (callable): Base rate function.
     
     Returns:
-        array: P(n) for n=0..N.
+        array: Probabilities P(n) for n=0,...,N.
     """
+    K = len(theta)
+    ns = np.arange(N+1)
     logP, _ = log_homogeneous_probabilities(N, K, theta, h)
     return np.exp(logP)
 
@@ -114,7 +115,7 @@ def compute_map_gradient(N, K, S, M, h, q, theta):
     
     return S - M*E_C - theta/q
 
-def estimate_map_parameters(N, K, S, M, h, q, theta0=None):
+def estimate_map_parameters(N, K, S, M, h, q, theta):
     """
     Find MAP estimate of θ (length K) given sufficient statistics.
     
@@ -125,14 +126,11 @@ def estimate_map_parameters(N, K, S, M, h, q, theta0=None):
         M (int): Number of samples.
         h (callable): Base rate function.
         q (array): Prior variances (length K).
-        theta0 (array, optional): Initial parameter values (length K).
+        theta (array): Current parameter values (length K).
     
     Returns:
         OptimizeResult: Result from scipy.optimize.minimize.
     """
-    if theta0 is None:
-        theta0 = np.zeros(K)
-
     def negative_log_posterior(th):
         """Negative log-posterior (objective function)"""
         _, logZ = log_homogeneous_probabilities(N, K, th, h)
@@ -144,7 +142,7 @@ def estimate_map_parameters(N, K, S, M, h, q, theta0=None):
         """Gradient of negative log-posterior"""
         return -compute_map_gradient(N, K, S, M, h, q, th)
 
-    res = minimize(negative_log_posterior, theta0, 
+    res = minimize(negative_log_posterior, theta, 
                   jac=gradient_negative_log_posterior, 
                   method='L-BFGS-B', 
                   options={'disp':False})
@@ -180,17 +178,17 @@ def compute_posterior_covariance(N, K, theta_map, h, q, M):
     Sigma = np.linalg.inv(H)
     return Sigma
 
-def em_update(N, K, samples, h, q_init, theta0=None, max_iter=100, tol=1e-6):
+def em_update(N, samples, h, K=None, q_init=None, theta0=None, max_iter=100, tol=1e-6):
     """
     Empirical-Bayes EM algorithm for a K-th order model.
     
     Args:
         N (int): Maximum count value.
-        K (int): Maximum order of interaction.
         samples (array): Observed counts.
         h (callable): Base rate function.
-        q_init (array): Initial prior variances (length K).
-        theta0 (array, optional): Initial parameter values (length K).
+        K (int, optional): Maximum order of interaction. If None, uses K=N.
+        q_init (array, optional): Initial prior variances (length K). If None, uses ones.
+        theta0 (array, optional): Initial parameter values (length K). If None, uses zeros.
         max_iter (int): Maximum number of EM iterations.
         tol (float): Convergence tolerance.
     
@@ -201,10 +199,16 @@ def em_update(N, K, samples, h, q_init, theta0=None, max_iter=100, tol=1e-6):
             q: Updated prior variances (length K)
             res: Optimization result
     """
+    if K is None:
+        K = N
     S = compute_sufficient_statistics(samples, K)
     M = len(samples)
+    if q_init is None:
+        q_init = np.ones(K)
+    if theta0 is None:
+        theta0 = np.zeros(K)
     q = q_init.copy()
-    theta_est = np.zeros(K) if theta0 is None else theta0
+    theta_est = theta0.copy()
 
     for itr in tqdm(range(max_iter), desc="EM iteration"):
         # E-step: Find MAP estimate
@@ -224,30 +228,32 @@ def em_update(N, K, samples, h, q_init, theta0=None, max_iter=100, tol=1e-6):
         
     return theta_map, Sigma, q, res
 
-def estimate_ml_parameters(N, K, ns, h, theta0=None):
+def estimate_ml_parameters(N, samples, h, K=None, theta0=None):
     """
-    Estimate θ (length K) by maximum likelihood for a K-th order model.
+    Estimate ML parameters for a K-th order model.
     
     Args:
         N (int): Maximum count value.
-        K (int): Maximum order of interaction.
-        ns (array): Observed counts.
+        samples (array): Observed counts.
         h (callable): Base rate function.
-        theta0 (array, optional): Initial parameter values (length K).
+        K (int, optional): Maximum order of interaction. If None, uses K=N.
+        theta0 (array, optional): Initial parameter values (length K). If None, uses zeros.
     
     Returns:
-        OptimizeResult: Result from scipy.optimize.minimize.
+        OptimizeResult: Optimization result containing ML estimate.
     """
-    S = compute_sufficient_statistics(ns, K)
-    M = len(ns)
+    if K is None:
+        K = N
+    S = compute_sufficient_statistics(samples, K)
+    M = len(samples)
     if theta0 is None:
         theta0 = np.zeros(K)
-
+    
     def negative_log_likelihood(th):
         """Negative log-likelihood (objective function)"""
         _, logZ = log_homogeneous_probabilities(N, K, th, h)
         return -(np.dot(S, th) - M*logZ)
-
+    
     def gradient_negative_log_likelihood(th):
         """Gradient of negative log-likelihood"""
         logP, _ = log_homogeneous_probabilities(N, K, th, h)
@@ -259,7 +265,7 @@ def estimate_ml_parameters(N, K, ns, h, theta0=None):
         E_C = Pn @ C
         
         return -(S - M*E_C)
-
+    
     res = minimize(negative_log_likelihood, theta0,
                   jac=gradient_negative_log_likelihood,
                   method='L-BFGS-B',
@@ -268,7 +274,7 @@ def estimate_ml_parameters(N, K, ns, h, theta0=None):
 
 def sample_counts(N, theta, h, size):
     """Draw samples of n from P(n) defined by the full N-order model."""
-    probs = homogeneous_probabilities(N, len(theta), theta, h)
+    probs = homogeneous_probabilities(N, theta, h)
     counts = np.random.choice(np.arange(N + 1), size=size, p=probs)
     return counts
 
@@ -290,63 +296,44 @@ if __name__ == "__main__":
     np.random.seed(42)
     
     # --------------------------
-    # 1) Define true model & sample data
-    # --------------------------
-    N = 10
-    # K-th order model
-    K = 4
+    # Parameters
+    N = 10  # System size
+    K = 4   # Maximum order of interaction (K ≤ N)
+    h = lambda n: 1.0  # Base rate function (constant)
     
-    # True model can have interactions up to N
-    true_theta_full = np.array([-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4))
-
-    def h(n):
-        """Base rate function: h(n) = 1 for all n"""
-        return 1
-
+    # --------------------------
+    # Generate synthetic data
+    true_theta_full = np.array([-2.5, 0.5, -0.2, 0.1, 0, 0, 0, 0, 0, 0])
+    samples = sample_counts(N, true_theta_full, h, size=1000)
+    
     print(f"\nSystem size N = {N}")
-    print(f"Fitting up to K = {K}-th order interactions.")
-    print("\nTrue full θ (N-dim):", true_theta_full)
-
-    # --------------------------
-    # 2) Sample data from the true N-dim model
-    # --------------------------
-    sample_size = 10000
-    samples = sample_counts(N, true_theta_full, h, size=sample_size)
+    print(f"Fitting up to K = {K}-th order interactions.\n")
+    
+    print("True full θ (N-dim):", true_theta_full)
     print("\nFirst 20 samples:", samples[:20])
     
     # --------------------------
-    # 3) ML‐fit θ (K-th order)
-    # --------------------------
     print(f"\nFitting using maximum likelihood (K={K})...")
-    # K-th order change: Initialize theta of length K.
-    theta0_k = np.zeros(K)
-    # K-th order change: Pass K to the estimator.
-    result_ml = estimate_ml_parameters(N, K, samples, h, theta0_k)
-    theta_ml = result_ml.x
-    print("ML‐Estimated θ (K-dim):", theta_ml)
+    # Run ML estimation
+    result_ml = estimate_ml_parameters(N, samples, h, K)
+    print("ML‐Estimated θ (K-dim):", result_ml.x)
     print("Log‐likelihood:", -result_ml.fun)
 
     # --------------------------
-    # 4) MAP‐fit θ with EM (K-th order)
-    # --------------------------
     print(f"\nFitting using MAP with EM (K={K})...")
-    # K-th order change: Initialize q and theta of length K.
-    q_k = np.ones(K) * 1.0
-    theta0_k = np.zeros(K)
-    # K-th order change: Pass K to the EM updater.
-    theta_map, Sigma, q, res_map = em_update(N, K, samples, h, q_k, theta0_k)
+    # Run EM algorithm
+    theta_map, Sigma, q, res_map = em_update(N, samples, h, K)
     print("MAP‐Estimated θ (K-dim):", theta_map)
     print("Final learned q (K-dim):", q)
     print("Log‐posterior:", -res_map.fun)
 
     # --------------------------
-    # 5) Show probabilities
-    # --------------------------
-    true_probs = homogeneous_probabilities(N, N, true_theta_full, h)
-    ml_probs = homogeneous_probabilities(N, K, theta_ml, h)
-    map_probs = homogeneous_probabilities(N, K, theta_map, h)
-    
+    # Compare probabilities
     print("\n--- Probabilities P(n) ---")
+    true_probs = homogeneous_probabilities(N, true_theta_full, h)
+    ml_probs = homogeneous_probabilities(N, result_ml.x, h)
+    map_probs = homogeneous_probabilities(N, theta_map, h)
+    
     print("True :", true_probs)
     print("ML   :", ml_probs)
     print("MAP  :", map_probs)
