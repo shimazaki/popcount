@@ -6,7 +6,7 @@ Author: Hideaki Shimazaki
 
 import numpy as np
 import matplotlib.pyplot as plt
-import model_homogeneous_exp as probability
+import model_homogeneous_exp_ as probability
 
 def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
     """
@@ -86,8 +86,7 @@ if __name__ == "__main__":
     sample_size = 5000
     samples = probability.sample_counts(N, true_theta, h, size=sample_size)
     q = np.ones(N) * 1.0  # prior variances
-    theta0 = np.zeros(N)
-    theta_map, Sigma, q, res = probability.em_update(N, samples, h, q, theta0)
+    theta_map, Sigma, q, res = probability.em_update(N, samples, h)
     est_probs = probability.homogeneous_probabilities(N, theta_map, h)
 
     # Create and save figure

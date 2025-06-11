@@ -7,7 +7,7 @@ Author: Hideaki Shimazaki
 import numpy as np
 import matplotlib.pyplot as plt
 import model_alternating_shrinking
-import model_homogeneous_exp as probability
+import model_homogeneous_exp_ as probability
 
 def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
     """
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     theta0 = np.zeros(N)
     def h(n):
         return 1
-    theta_map, Sigma, q, res = probability.em_update(N, samples, h, q, theta0)
+    theta_map, Sigma, q, res = probability.em_update(N, samples, h)
     est_probs = probability.homogeneous_probabilities(N, theta_map, h)
 
     # Create and save figure
