@@ -85,7 +85,7 @@ def plot_homogeneous_model(pop_counts, est_probs_em, est_probs_ml, theta_map, th
 
 if __name__ == "__main__":
     #np.random.seed(42)
-    N = 30  # Override default N
+    N = 10  # Override default N
     T = 300  # Override default T
     dt = 0.02   # Bin size in seconds
     

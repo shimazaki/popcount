@@ -7,7 +7,7 @@ Author: Hideaki Shimazaki
 import numpy as np
 import matplotlib.pyplot as plt
 import model_alternating_shrinking
-import model_homogeneous_exp_ as probability
+import model_homogeneous_exp as probability
 
 def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
     """
@@ -94,5 +94,5 @@ if __name__ == "__main__":
     # Create and save figure
     true_theta = np.zeros(N)
     fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_map, Sigma)
-    plt.savefig('fig/model_alternating_shrinking_fit.png', dpi=300, bbox_inches='tight')
+    plt.savefig('fig/fig_alternating_shrinking_fit.png', dpi=300, bbox_inches='tight')
     plt.show()

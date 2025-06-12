@@ -1,53 +1,26 @@
 import numpy as np
 import time
 from numba import jit
-from tqdm import tqdm
-from fig_leaky_integrate_and_fire import plot_lif_neurons
-
-def generate_correlated_noise(N, c_in, num_steps):
-    """
-    Generate correlated Gaussian noise using Cholesky decomposition.
-    
-    Args:
-        N (int): Number of neurons
-        c_in (float): Input correlation coefficient
-        num_steps (int): Number of time steps
-    
-    Returns:
-        array: Correlated noise matrix of shape (N, num_steps)
-    """
-    # Create covariance matrix
-    cov_matrix = np.ones((N, N)) * c_in
-    np.fill_diagonal(cov_matrix, 1.0)
-    
-    # Cholesky decomposition
-    L = np.linalg.cholesky(cov_matrix)
-    
-    # Generate independent Gaussian noise
-    Z = np.random.randn(N, num_steps)
-    
-    # Transform to get correlated noise
-    correlated_noise = L @ Z
-    
-    return correlated_noise
 
 @jit(nopython=True)
-def simulate_lif_neurons_jit(N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in):
+def simulate_lif_neurons(N=50, dt=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3, 
+                           V_reset=-65e-3, g_L=5e-9, C_m=200e-12, I_base=30e-12, 
+                           noise_amp=20e-12, c_in=0.4):
     """
     JIT-compiled version of LIF neuron simulation.
     
     Args:
-        N (int): Number of neurons
-        dt (float): Time step in seconds
-        T (float): Total simulation time in ms
-        E_L (float): Leak potential in Volts
-        V_th (float): Firing threshold in Volts
-        V_reset (float): Reset potential in Volts
-        g_L (float): Leak conductance in Siemens
-        C_m (float): Membrane capacitance in Farads
-        I_base (float): Base current in Amps
-        noise_amp (float): Noise amplitude in Amps
-        c_in (float): Input correlation coefficient
+        N (int): Number of neurons (default: 50)
+        dt (float): Time step in seconds (default: 0.05 ms)
+        T (float): Total simulation time in seconds (default: 5 s)
+        E_L (float): Leak potential in Volts (default: -70 mV)
+        V_th (float): Firing threshold in Volts (default: -50 mV)
+        V_reset (float): Reset potential in Volts (default: -65 mV)
+        g_L (float): Leak conductance in Siemens (default: 5 nS)
+        C_m (float): Membrane capacitance in Farads (default: 200 pF)
+        I_base (float): Base current in Amps (default: 30 pA)
+        noise_amp (float): Noise amplitude in Amps (default: 20 pA)
+        c_in (float): Input correlation coefficient (default: 0.4)
     
     Returns:
         tuple: (time, V, spike_times, neuron_indices)
@@ -99,91 +72,6 @@ def simulate_lif_neurons_jit(N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noi
     else:
         spike_times = np.zeros(0)
         neuron_indices = np.zeros(0, dtype=np.int64)
-        
-    return time, V, spike_times, neuron_indices
-
-def simulate_lif_neurons_jit_with_progress(N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in):
-    """
-    Wrapper function to add progress bar to JIT simulation.
-    """
-    # Time array for progress calculation
-    time = np.arange(0, T, dt)
-    num_steps = len(time)
-    
-    # Create progress bar
-    pbar = tqdm(total=num_steps, desc="Simulating", unit="steps")
-    
-    # Run the simulation (will compile on first run)
-    time_array, V, spike_times, neuron_indices = simulate_lif_neurons_jit(
-        N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in
-    )
-    
-    # Update progress bar to completion
-    pbar.update(num_steps)
-    pbar.close()
-    
-    return time_array, V, spike_times, neuron_indices
-
-def simulate_lif_neurons_with_progress(N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in):
-    """
-    Version with progress bar (not JIT-compiled).
-    
-    Args:
-        N (int): Number of neurons
-        dt (float): Time step in seconds
-        T (float): Total simulation time in ms
-        E_L (float): Leak potential in Volts
-        V_th (float): Firing threshold in Volts
-        V_reset (float): Reset potential in Volts
-        g_L (float): Leak conductance in Siemens
-        C_m (float): Membrane capacitance in Farads
-        I_base (float): Base current in Amps
-        noise_amp (float): Noise amplitude in Amps
-        c_in (float): Input correlation coefficient
-    
-    Returns:
-        tuple: (time, V, spike_times, neuron_indices)
-            time: array of time points
-            V: voltage matrix (N x time_steps)
-            spike_times: array of spike times
-            neuron_indices: array of neuron indices for each spike
-    """
-    # Time array
-    time = np.arange(0, T, dt)
-    num_steps = len(time)
-    
-    # Initialize voltage matrix and spike recording list
-    V = np.zeros((N, num_steps))
-    V[:, 0] = E_L  # Set initial voltage to the leak potential
-    spikes = [] # List to store (time, neuron_index) of spikes
-
-    # Create covariance matrix and its Cholesky decomposition
-    cov_matrix = np.ones((N, N)) * c_in
-    np.fill_diagonal(cov_matrix, 1.0)
-    L = np.linalg.cholesky(cov_matrix)
-
-    # Simulation Loop with progress bar
-    for i in tqdm(range(1, num_steps), desc="Simulating", unit="steps"):
-        # Generate correlated noise for this time step
-        I_noise = noise_amp * (L @ np.random.randn(N))
-        
-        # Update the membrane potential for all neurons at once (vectorized)
-        dV = (-g_L * (V[:, i-1] - E_L) + I_noise) / C_m * dt + I_noise / C_m * np.sqrt(dt)
-        V[:, i] = V[:, i-1] + dV
-
-        # Find which neurons spiked and reset them
-        spiked_neurons = V[:, i] > V_th
-        V[spiked_neurons, i] = V_reset
-
-        # Record the spikes for the raster plot
-        for neuron_idx in np.where(spiked_neurons)[0]:
-            spikes.append((time[i], neuron_idx))
-
-    # Convert spikes to numpy arrays for faster plotting
-    if spikes:
-        spike_times, neuron_indices = np.array(spikes).T
-    else:
-        spike_times, neuron_indices = np.array([]), np.array([])
         
     return time, V, spike_times, neuron_indices
 
@@ -241,7 +129,7 @@ if __name__ == "__main__":
     # --- Parameters ---
     N = 50          # Number of neurons in the population
     dt = 0.05 / 1000      # Time step in second
-    T = 10          # Total simulation time in second
+    T = 5          # Total simulation time in second
 
     # Neuron Parameters
     C_m = 200e-12    # Capacitance in Farads (200 pF)
@@ -252,13 +140,13 @@ if __name__ == "__main__":
 
     # Input and Noise
     I_base = 30e-12   # Base current in Amps
-    noise_amp = 10e-12 # Noise amplitude in Amps
+    noise_amp = 20e-12 # Noise amplitude in Amps
     c_in = 0.4      # Input correlation coefficient
 
-    # Run JIT simulation with progress bar
-    print("Starting JIT simulation with progress bar...")
+    # Run JIT simulation
+    print("Starting JIT simulation...")
     sim_start = time.time()
-    time_array, V, spike_times, neuron_indices = simulate_lif_neurons_jit_with_progress(
+    time_array, V, spike_times, neuron_indices = simulate_lif_neurons(
         N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in
     )
     sim_end = time.time()
