@@ -4,8 +4,8 @@ from numba import jit
 
 @jit(nopython=True)
 def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3, 
-                           V_reset=-65e-3, g_L=5e-9, C_m=200e-12, I_base=20e-12, 
-                           noise_amp=20e-12, c_in=0.4, seed=None):
+                           V_reset=-65e-3, g_L=10e-9, C_m=200e-12, I_base=0e-12, 
+                           noise_amp=20e-12, c_in=0.3, seed=None):
     """
     JIT-compiled version of LIF neuron simulation.
     
@@ -16,11 +16,11 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
         E_L (float): Leak potential in Volts (default: -70 mV)
         V_th (float): Firing threshold in Volts (default: -50 mV)
         V_reset (float): Reset potential in Volts (default: -65 mV)
-        g_L (float): Leak conductance in Siemens (default: 5 nS)
+        g_L (float): Leak conductance in Siemens (default: 10 nS)
         C_m (float): Membrane capacitance in Farads (default: 200 pF)
-        I_base (float): Base current in Amps (default: 20 pA)
-        noise_amp (float): Noise amplitude in Amps (default: 20 pA)
-        c_in (float): Input correlation coefficient (default: 0.4)
+        I_base (float): Base current in Amps (default: 0 pA)
+        noise_amp (float): Noise amplitude in Amps (default: 18 pA)
+        c_in (float): Input correlation coefficient (default: 0.2)
         seed (int or None): Random seed for reproducibility (default: None)
     
     Returns:
@@ -28,7 +28,7 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
             spike_times_per_neuron: list of arrays, where each array contains the spike times for a single neuron
             time: array of time points
             V: voltage matrix (N x time_steps)
-            (N, dt_s, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed): tuple of input parameters
+            (N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed): tuple of input parameters
     """
     # Set random seed for Numba if provided
     if seed is not None:
@@ -57,7 +57,7 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
         I_noise = noise_amp * (L @ np.random.randn(N))
         
         # Update the membrane potential for all neurons at once (vectorized)
-        dV = (-g_L * (V[:, i-1] - E_L) + I_noise) / C_m * dt_s + I_noise / C_m * np.sqrt(dt_s)
+        dV = (-g_L * (V[:, i-1] - E_L) + I_base) / C_m * dt_s + I_noise / C_m * np.sqrt(dt_s)
         V[:, i] = V[:, i-1] + dV
 
         # Find which neurons spiked and reset them
@@ -128,12 +128,12 @@ if __name__ == "__main__":
     E_L = -70e-3     # Leak potential in Volts (-70 mV)
     V_th = -50e-3    # Firing threshold in Volts (-50 mV)
     V_reset = -65e-3 # Reset potential in Volts (-65 mV)
-    g_L = 5e-9       # Leak conductance in Siemens (5 nS)
+    g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 20e-12   # Base current in Amps
-    noise_amp = 20e-12 # Noise amplitude in Amps
-    c_in = 0.4      # Input correlation coefficient
+    I_base = 0e-12   # Base current in Amps
+    noise_amp = 18e-12 # Noise amplitude in Amps
+    c_in = 0.3      # Input correlation coefficient
 
     # Run JIT simulation
     print("Starting simulation...")

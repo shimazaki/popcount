@@ -96,14 +96,13 @@ if __name__ == "__main__":
     #E_L = -70e-3     # Leak potential in Volts (-70 mV)
     #V_th = -50e-3    # Firing threshold in Volts (-50 mV)
     #V_reset = -65e-3 # Reset potential in Volts (-65 mV)
-    g_L = 5e-9 #5e-9       # Leak conductance in Siemens (5 nS)
+    g_L = .1e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 20e-12   # Base current in Amps
+    I_base = 0e-12   # Base current in Amps
     noise_amp = 20e-12 # Noise amplitude in Amps
-    c_in = 0.4      # Input correlation coefficient
+    c_in = 0.3      # Input correlation coefficient
 
-    
     # Run simulation
     print("Running simulation...")
     spike_times_per_neuron, time_array, V, params  = simulate_lif_neurons(

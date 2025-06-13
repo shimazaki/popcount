@@ -52,6 +52,7 @@ def plot_lif_neurons(time, V, spike_times_per_neuron, N, V_th, params=None, exam
             ax2.vlines(spikes, ymin=V_th * 1e3, ymax=V_th * 1e3 + 10, 
                       colors=color, linewidth=1.0, alpha=0.8)
     ax2.axhline(y=V_th * 1e3, color='k', linestyle='--', label='Threshold')
+    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5)
     ax2.set_title('Example Neurons')
     ax2.set_xlabel('Time (s)')
     ax2.set_ylabel('Membrane Potential (mV)')
@@ -91,7 +92,7 @@ def plot_spike_analysis(time, V, spike_times_per_neuron, N, binary_spikes, dt=0.
             ax1.axvline(spike_time, ymin=(n-0.)/N, ymax=(n+1.)/N, color='black', linewidth=1)
     if params is not None:
         # Unpack params_tuple for use in the plot title
-        N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed = params
+        N, dt_s, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed = params
 
         plot_title = (
             f"N={N}, V_th={V_th:.2e}, V_reset={V_reset:.2e}, E_L={E_L:.2e}, "
@@ -136,11 +137,15 @@ def plot_spike_analysis(time, V, spike_times_per_neuron, N, binary_spikes, dt=0.
 if __name__ == "__main__":
     # Run simulation
     print("Running simulation...")
-    g_L = 5e-9       # Leak conductance in Siemens (5 nS)
-    spike_times_per_neuron, time_array, V, params = simulate_lif_neurons(seed=42, g_L=g_L, dt_s=0.01/1000)
+    T = 5.0          # Total simulation time in seconds
+    dt_s = 0.01/1000   # Time step in seconds (0.01 ms)
+    g_L = 10e-9      # Leak conductance in Siemens (10 nS)
+    spike_times_per_neuron, time_array, V, params = simulate_lif_neurons(
+        seed=42, g_L=g_L, dt_s=dt_s, T=T
+    )
     print("\nPlotting and saving results...")
     plot_lif_neurons(time_array, V, spike_times_per_neuron, N=50, V_th=-50e-3, params=params, save_path="fig/fig_leaky_integrate_and_fire.png")
     binary_spikes, _ = get_binary_spikes(spike_times_per_neuron, dt=0.05)
-    plot_spike_analysis(time_array, V, spike_times_per_neuron, N=50, binary_spikes=binary_spikes, params=params, save_path="fig/fig_leaky_integrate_and_fire_data.png")
+    plot_spike_analysis(time_array, V, spike_times_per_neuron, N=50, binary_spikes=binary_spikes, dt=0.05, params=params, save_path="fig/fig_leaky_integrate_and_fire_data.png")
 
 
