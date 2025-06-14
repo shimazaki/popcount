@@ -19,8 +19,8 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
         g_L (float): Leak conductance in Siemens (default: 10 nS)
         C_m (float): Membrane capacitance in Farads (default: 200 pF)
         I_base (float): Base current in Amps (default: 0 pA)
-        noise_amp (float): Noise amplitude in Amps (default: 18 pA)
-        c_in (float): Input correlation coefficient (default: 0.2)
+        noise_amp (float): Noise amplitude in Amps (default: 15 pA)
+        c_in (float): Input correlation coefficient (default: 0.3)
         seed (int or None): Random seed for reproducibility (default: None)
     
     Returns:
@@ -120,8 +120,8 @@ if __name__ == "__main__":
     
     # --- Parameters ---
     N = 50          # Number of neurons in the population
-    dt = 0.05 / 1000      # Time step in second
-    T = 5          # Total simulation time in second
+    dt_s = 0.001 / 1000 #0.05 / 1000      # Time step in second
+    T = 1          # Total simulation time in second
 
     # Neuron Parameters
     C_m = 200e-12    # Capacitance in Farads (200 pF)
@@ -132,14 +132,14 @@ if __name__ == "__main__":
 
     # Input and Noise
     I_base = 0e-12   # Base current in Amps
-    noise_amp = 18e-12 # Noise amplitude in Amps
+    noise_amp = 20e-12 # Noise amplitude in Amps
     c_in = 0.3      # Input correlation coefficient
 
     # Run JIT simulation
     print("Starting simulation...")
     sim_start = time.time()
     spike_times_per_neuron, time_array, V, params = simulate_lif_neurons(
-        N, dt, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed=42
+        N, dt_s, T, E_L, V_th, V_reset, g_L, C_m, I_base, noise_amp, c_in, seed=42
     )
     sim_end = time.time()
     print(f"Simulation completed in {sim_end - sim_start:.3f} seconds")

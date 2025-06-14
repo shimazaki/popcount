@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # Run simulation
     print("Running simulation...")
     T = 5.0          # Total simulation time in seconds
-    dt_s = 0.01/1000   # Time step in seconds (0.01 ms)
+    dt_s = 0.05/1000   # Time step in seconds (0.01 ms)
     g_L = 10e-9      # Leak conductance in Siemens (10 nS)
     spike_times_per_neuron, time_array, V, params = simulate_lif_neurons(
         seed=42, g_L=g_L, dt_s=dt_s, T=T

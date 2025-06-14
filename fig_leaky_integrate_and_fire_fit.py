@@ -88,15 +88,16 @@ def plot_homogeneous_model(pop_counts, est_probs_em, est_probs_ml, theta_map, th
 if __name__ == "__main__":
     np.random.seed(42)
     N = 10  # Override default N
-    T = 3000  # Override default T
-    dt = 0.05   # Bin size in seconds
+    T = 30  # Override default T
+    dt_s = 0.05/1000   # Time step in seconds (0.01 ms)
+    dt = 0.02   # Bin size in seconds
 
     # Neuron Parameters
     #C_m = 200e-12    # Capacitance in Farads (200 pF)
     #E_L = -70e-3     # Leak potential in Volts (-70 mV)
     #V_th = -50e-3    # Firing threshold in Volts (-50 mV)
     #V_reset = -65e-3 # Reset potential in Volts (-65 mV)
-    g_L = .1e-9       # Leak conductance in Siemens (10 nS)
+    g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
     I_base = 0e-12   # Base current in Amps
@@ -106,10 +107,10 @@ if __name__ == "__main__":
     # Run simulation
     print("Running simulation...")
     spike_times_per_neuron, time_array, V, params  = simulate_lif_neurons(
-        N=N, T=T, g_L = g_L, I_base = I_base, noise_amp = noise_amp, c_in = c_in)
+        N=N, T=T, g_L = g_L, I_base = I_base, noise_amp = noise_amp, c_in = c_in, dt_s=dt_s)
 
     # Convert spike times to binary spike trains
-    binary_spikes, time_points = get_binary_spikes(spike_times_per_neuron, dt=0.05)
+    binary_spikes, time_points = get_binary_spikes(spike_times_per_neuron, dt=dt)
     print("Shape of binary_spikes:", binary_spikes.shape)
     print("Shape of time_points:", time_points.shape)
 
