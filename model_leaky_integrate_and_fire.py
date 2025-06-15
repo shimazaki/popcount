@@ -4,7 +4,7 @@ from numba import jit
 
 @jit(nopython=True)
 def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3, 
-                           V_reset=-65e-3, g_L=10e-9, C_m=200e-12, I_base=80e-12, 
+                           V_reset=-65e-3, g_L=10e-9, C_m=200e-12, I_base=100e-12, 
                            noise_amp=10e-12, c_in=0.3, seed=None):
     """
     JIT-compiled version of LIF neuron simulation.
@@ -18,7 +18,7 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
         V_reset (float): Reset potential in Volts (default: -65 mV)
         g_L (float): Leak conductance in Siemens (default: 10 nS)
         C_m (float): Membrane capacitance in Farads (default: 200 pF)
-        I_base (float): Base current in Amps (default: 80 pA)
+        I_base (float): Base current in Amps (default: 100 pA)
         noise_amp (float): Noise amplitude in Amps (default: 10 pA)
         c_in (float): Input correlation coefficient (default: 0.3)
         seed (int or None): Random seed for reproducibility (default: None)
@@ -131,8 +131,8 @@ if __name__ == "__main__":
     g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 80e-12   # Base current in Amps (20 pA)
-    noise_amp = 10e-12 # Noise amplitude in Amps (15 pA)
+    I_base = 100e-12   # Base current in Amps (100 pA)
+    noise_amp = 10e-12 # Noise amplitude in Amps (10 pA)
     c_in = 0.3      # Input correlation coefficient
 
     # Key statistics
