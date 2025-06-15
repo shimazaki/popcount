@@ -4,8 +4,8 @@ from numba import jit
 
 @jit(nopython=True)
 def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3, 
-                           V_reset=-65e-3, g_L=10e-9, C_m=200e-12, I_base=0e-12, 
-                           noise_amp=20e-12, c_in=0.3, seed=None):
+                           V_reset=-65e-3, g_L=10e-9, C_m=200e-12, I_base=80e-12, 
+                           noise_amp=10e-12, c_in=0.3, seed=None):
     """
     JIT-compiled version of LIF neuron simulation.
     
@@ -18,8 +18,8 @@ def simulate_lif_neurons(N=50, dt_s=0.05/1000, T=5, E_L=-70e-3, V_th=-50e-3,
         V_reset (float): Reset potential in Volts (default: -65 mV)
         g_L (float): Leak conductance in Siemens (default: 10 nS)
         C_m (float): Membrane capacitance in Farads (default: 200 pF)
-        I_base (float): Base current in Amps (default: 0 pA)
-        noise_amp (float): Noise amplitude in Amps (default: 15 pA)
+        I_base (float): Base current in Amps (default: 80 pA)
+        noise_amp (float): Noise amplitude in Amps (default: 10 pA)
         c_in (float): Input correlation coefficient (default: 0.3)
         seed (int or None): Random seed for reproducibility (default: None)
     
@@ -131,9 +131,18 @@ if __name__ == "__main__":
     g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 0e-12   # Base current in Amps
-    noise_amp = 20e-12 # Noise amplitude in Amps
+    I_base = 80e-12   # Base current in Amps (20 pA)
+    noise_amp = 10e-12 # Noise amplitude in Amps (15 pA)
     c_in = 0.3      # Input correlation coefficient
+
+    # Key statistics
+    tau = C_m / g_L
+    print(f"Effective time constat, Tau: {tau*1000:.2f} ms")
+    Vss = I_base / g_L + E_L
+    print(f"Resting potential, Vss: {Vss*1000:.2f} mV (Vth: {V_th*1000:.2f} mV)")
+    I_base_max = (V_th - E_L) * g_L
+    print(f"I_base_max for subthreshold activity: {I_base_max*1e12:.2f} pA")
+
 
     # Run JIT simulation
     print("Starting simulation...")

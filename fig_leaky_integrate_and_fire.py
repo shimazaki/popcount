@@ -52,7 +52,6 @@ def plot_lif_neurons(time, V, spike_times_per_neuron, N, V_th, params=None, exam
             ax2.vlines(spikes, ymin=V_th * 1e3, ymax=V_th * 1e3 + 10, 
                       colors=color, linewidth=1.0, alpha=0.8)
     ax2.axhline(y=V_th * 1e3, color='k', linestyle='--', label='Threshold')
-    ax2.axhline(y=0, color='k', linestyle='--', alpha=0.5)
     ax2.set_title('Example Neurons')
     ax2.set_xlabel('Time (s)')
     ax2.set_ylabel('Membrane Potential (mV)')
