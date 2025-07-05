@@ -124,15 +124,15 @@ if __name__ == "__main__":
     T = 1          # Total simulation time in second
 
     # Neuron Parameters
-    C_m = 200e-12    # Capacitance in Farads (200 pF)
+    C_m = 300e-12    # Capacitance in Farads (300 pF)
     E_L = -70e-3     # Leak potential in Volts (-70 mV)
     V_th = -50e-3    # Firing threshold in Volts (-50 mV)
     V_reset = -65e-3 # Reset potential in Volts (-65 mV)
     g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 100e-12   # Base current in Amps (100 pA)
-    noise_amp = 10e-12 # Noise amplitude in Amps (10 pA)
+    I_base = 10e-12   # Base current in Amps (100 pA)
+    noise_amp = 20e-12 # Noise amplitude in Amps (10 pA)
     c_in = 0.3      # Input correlation coefficient
 
     # Key statistics

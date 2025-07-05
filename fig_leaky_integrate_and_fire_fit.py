@@ -100,8 +100,8 @@ if __name__ == "__main__":
     g_L = 10e-9       # Leak conductance in Siemens (10 nS)
 
     # Input and Noise
-    I_base = 0e-12   # Base current in Amps
-    noise_amp = 20e-12 # Noise amplitude in Amps
+    I_base = 100e-12   # Base current in Amps
+    noise_amp = 10e-12 # Noise amplitude in Amps
     c_in = 0.3      # Input correlation coefficient
 
     # Run simulation
