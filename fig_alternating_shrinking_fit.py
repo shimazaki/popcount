@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import model_alternating_shrinking
 import model_homogeneous_exp as probability
+from scipy.special import comb
 
 def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
     """
@@ -31,8 +32,8 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
 
     # Plot probabilities in linear scale
-    ax1.plot(true_probs, 'o-', label='True probabilities')
-    ax1.plot(est_probs, 'x-', label='Estimated probabilities')
+    ax1.plot(true_probs, 'o-', color='blue', label='True probabilities')
+    ax1.plot(est_probs, 'x-', color='red', label='Estimated probabilities')
     ax1.legend()
     ax1.set_xlim(0, N)
     ax1.set_xlabel('Count (n)')
@@ -41,8 +42,8 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     ax1.grid(True, alpha=0.3)
 
     # Plot probabilities in log scale
-    ax2.plot(true_probs, 'o-', label='True probabilities')
-    ax2.plot(est_probs, 'x-', label='Estimated probabilities')
+    ax2.plot(true_probs, 'o-', color='blue', label='True probabilities')
+    ax2.plot(est_probs, 'x-', color='red', label='Estimated probabilities')
     ax2.legend()
     ax2.set_xlim(0, N)
     ax2.set_xlabel('Count (n)')
@@ -56,12 +57,12 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     if Sigma is not None:
         # Compute standard errors from diagonal of covariance matrix
         std_errors = np.sqrt(np.diag(Sigma))
-        ax3.errorbar(x, est_theta, yerr=2*std_errors, fmt='x-', 
+        ax3.errorbar(x, est_theta, yerr=2*std_errors, fmt='x-', color='red',
                     label='Estimated θ', capsize=5, capthick=1)
     else:
-        ax3.plot(x, est_theta, 'x-', label='Estimated θ')
+        ax3.plot(x, est_theta, 'x-', color='red', label='Estimated θ')
     
-    ax3.plot(x, true_theta, 'o-', label='True θ')
+    ax3.plot(x, true_theta, 'o-', color='blue', label='True θ')
     ax3.legend()
     ax3.set_xlabel('Parameter index (k)')
     ax3.set_ylabel('Parameter value (θₖ)')
@@ -74,9 +75,14 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
 if __name__ == "__main__":
     # Model parameters
     N = 10
-    f = 10.0  # sparsity-inducing parameter
-    m = 1.0   # power law exponent
-    Cj_func = lambda j: 1 / j**m
+    
+    # f = 10.0  # sparsity-inducing parameter
+    # m = 1.0   # power law exponent
+    # Cj_func = lambda j: 1 / j**m
+
+    f = 30
+    tau = .8
+    Cj_func = lambda j: tau**j
 
     # Compute true probabilities
     true_probs = model_alternating_shrinking.compute_n_spike_pmf_with_func(N, f, Cj_func)
@@ -86,13 +92,17 @@ if __name__ == "__main__":
     samples = model_alternating_shrinking.sample_spike_counts(N, f, Cj_func, size=sample_size)
     q = np.ones(N) * 1.0  # prior variances
     theta0 = np.zeros(N)
-    def h(n):
-        return 1
-    theta_map, Sigma, q, res = probability.em_update(N, samples, h)
-    est_probs = probability.homogeneous_probabilities(N, theta_map, h)
+    h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
+
+    theta_est, Sigma, q, res = probability.em_update(N, samples, h_func)
+    #theta_est = probability.estimate_ml_parameters(N, samples, h=h_func).x
+    est_probs = probability.homogeneous_probabilities(N, theta_est, h_func)
 
     # Create and save figure
-    true_theta = np.zeros(N)
-    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_map, Sigma)
+    Cj_original = [Cj_func(j) for j in range(1, N+1)]
+    true_theta = model_alternating_shrinking.cj_to_theta(Cj_original, f)
+
+    print("True theta:", true_theta)
+    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_est, Sigma)
     plt.savefig('fig/fig_alternating_shrinking_fit.png', dpi=300, bbox_inches='tight')
     plt.show()

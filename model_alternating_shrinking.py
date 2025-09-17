@@ -10,6 +10,9 @@ import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
 
+from functools import lru_cache
+from math import factorial
+
 def compute_n_spike_pmf_with_func(N, f, Cj_func):
     """
     Computes the n-spike count PMF using a user-defined function for C_j.
@@ -167,19 +170,77 @@ def gibbs_sampler(N, f, Cj_func, h_func, steps=10000, burn_in=1000, seed=None):
     pbar.close()
     return np.array(samples)
 
+
+# Conversion between C_j and theta_k
+# --- Stirling numbers ---
+@lru_cache(maxsize=None)
+def _S2(n: int, k: int) -> int:
+    """Stirling numbers of the second kind S(n,k)."""
+    if n == k == 0: return 1
+    if n == 0 or k == 0: return 0
+    if k > n: return 0
+    return k * _S2(n - 1, k) + _S2(n - 1, k - 1)
+
+@lru_cache(maxsize=None)
+def _s1(n: int, k: int) -> int:
+    """SIGNED Stirling numbers of the first kind s(n,k)."""
+    if n == k == 0: return 1
+    if n == 0 or k == 0: return 0
+    if k > n: return 0
+    return _s1(n - 1, k - 1) - (n - 1) * _s1(n - 1, k)
+
+# --- Conversions: use 0-based lists: C[j-1] == C_j, theta[k-1] == theta_k ---
+def cj_to_theta(C, f):
+    """
+    Convert C_j -> theta_k.
+    Inputs:
+      C: list/array length N with C[0]=C_1,...,C[N-1]=C_N
+      f: sparsity parameter (mathpzc{f})
+    Returns:
+      theta: list length N with theta[0]=theta_1,...,theta[N-1]=theta_N
+    """
+    N = len(C)
+    theta = [0.0] * N
+    for k in range(1, N + 1):
+        acc = 0.0
+        for l in range(k, N + 1):
+            acc += ((-1) ** l) * f * C[l - 1] / (N ** l) * (factorial(k) * _S2(l, k))
+        theta[k - 1] = acc
+    return theta
+
+def theta_to_cj(theta, f):
+    """
+    Convert theta_k -> C_j (inverse).
+    Inputs:
+      theta: list/array length N with theta[0]=theta_1,...,theta[N-1]=theta_N
+      f: sparsity parameter (mathpzc{f})
+    Returns:
+      C: list length N with C[0]=C_1,...,C[N-1]=C_N
+    """
+    N = len(theta)
+    C = [0.0] * N
+    for l in range(1, N + 1):
+        inner = 0.0
+        for k in range(l, N + 1):
+            inner += _s1(k, l) * (theta[k - 1] / factorial(k))
+        C[l - 1] = ((-1) ** l) * (N ** l) / f * inner
+    return C
+
+
 if __name__ == "__main__":
     # Parameters
-    N = 80
-    f = 50.0
+    N = 10
     h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
 
     #Polylogarithmic exponential distribution
-    m = 1.0
-    Cj_func = lambda j: 1 / j**m
+    #f = 50.0
+    # m = 1.0
+    # Cj_func = lambda j: 1 / j**m
 
     #Shifted-geometric exponential distribution
-    # tau = 1.0
-    # Cj_func = lambda j: tau**j
+    f = 20.0
+    tau = 0.8
+    Cj_func = lambda j: tau**j
 
     # Compute PMF
     pmf = compute_n_spike_pmf_with_func(N, f, Cj_func)
@@ -194,7 +255,7 @@ if __name__ == "__main__":
     os.makedirs('fig', exist_ok=True)
     
     # Generate samples
-    n_samples = 5000
+    n_samples = 3000
     print("\nGenerating exact samples...")
     exact_counts = sample_spike_counts(N, f, Cj_func, size=n_samples)
     
@@ -214,7 +275,7 @@ if __name__ == "__main__":
     plt.hist(gibbs_counts, bins=np.arange(N+2)-0.5, density=True, alpha=0.5,
              label='Gibbs sampling', color='red')
     
-    plt.title(f"n-Spike Count PMF (m={m}, f={f})")
+    plt.title(f"n-Spike Count PMF (f={f})")
     plt.xlabel("Number of Active Neurons (n)")
     plt.ylabel("Probability")
     plt.grid(True, alpha=0.3)
@@ -233,4 +294,14 @@ if __name__ == "__main__":
     print("\nGibbs sampling method:")
     print("First 5 Gibbs samples:\n", gibbs_samples[:5])
     print(f"Mean: {np.mean(gibbs_counts):.2f}")
-    print(f"Variance: {np.var(gibbs_counts):.2f}") 
+    print(f"Variance: {np.var(gibbs_counts):.2f}")
+    
+    # Test Cj -> theta -> Cj conversion
+    Cj_original = [Cj_func(j) for j in range(1, N+1)]
+    theta = cj_to_theta(Cj_original, f)
+    Cj_recovered = theta_to_cj(theta, f)
+    max_error = max(abs(Cj_original[i] - Cj_recovered[i]) for i in range(N))
+    print(f"\nCj->theta->Cj conversion test:")
+    print(f"Original Cj (first 5): {[f'{x:.6f}' for x in Cj_original[:5]]}")
+    print(f"Recovered Cj (first 5): {[f'{x:.6f}' for x in Cj_recovered[:5]]}")
+    print(f"Max error = {max_error:.2e}") 

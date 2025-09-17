@@ -101,6 +101,7 @@ if __name__ == "__main__":
     # Model parameters
     N = 10
     true_theta = [-2.5, 0.5, -0.2, 0.1] + [0.0]*(N-4)
+    #true_theta = [-2.5, 0.5/N] + [0.0]*(N-2)
 
     # Define base measure as lambda function
     #h = lambda n: 1.0 / comb(N, n)
