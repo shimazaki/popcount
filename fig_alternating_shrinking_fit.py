@@ -57,10 +57,13 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     if Sigma is not None:
         # Compute standard errors from diagonal of covariance matrix
         std_errors = np.sqrt(np.diag(Sigma))
-        ax3.errorbar(x, est_theta, yerr=2*std_errors, fmt='x-', color='red',
+        # Only plot the estimated parameters that exist
+        x_est = np.arange(1, len(est_theta)+1)
+        ax3.errorbar(x_est, est_theta, yerr=2*std_errors, fmt='x-', color='red',
                     label='Estimated θ', capsize=5, capthick=1)
     else:
-        ax3.plot(x, est_theta, 'x-', color='red', label='Estimated θ')
+        x_est = np.arange(1, len(est_theta)+1)
+        ax3.plot(x_est, est_theta, 'x-', color='red', label='Estimated θ')
     
     ax3.plot(x, true_theta, 'o-', color='blue', label='True θ')
     ax3.legend()
@@ -75,26 +78,27 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
 if __name__ == "__main__":
     # Model parameters
     N = 10
+    K = 2  # Maximum order of interaction (second-order model)
     
-    # f = 10.0  # sparsity-inducing parameter
-    # m = 1.0   # power law exponent
-    # Cj_func = lambda j: 1 / j**m
+    f = 1.0  # sparsity-inducing parameter
+    m = 0.1   # power law exponent
+    Cj_func = lambda j: 1 / j**m
 
     f = 30
-    tau = .8
+    tau = .7
     Cj_func = lambda j: tau**j
 
     # Compute true probabilities
     true_probs = model_alternating_shrinking.compute_n_spike_pmf_with_func(N, f, Cj_func)
 
     # Generate samples and fit using MAP with EM
-    sample_size = 5000
+    sample_size = 500
     samples = model_alternating_shrinking.sample_spike_counts(N, f, Cj_func, size=sample_size)
-    q = np.ones(N) * 1.0  # prior variances
-    theta0 = np.zeros(N)
+    q = np.ones(K) * 1.0  # prior variances for K-th order model
+    theta0 = np.zeros(K)
     h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
 
-    theta_est, Sigma, q, res = probability.em_update(N, samples, h_func)
+    theta_est, Sigma, q, res = probability.em_update(N, samples, h_func, K=K)
     #theta_est = probability.estimate_ml_parameters(N, samples, h=h_func).x
     est_probs = probability.homogeneous_probabilities(N, theta_est, h_func)
 

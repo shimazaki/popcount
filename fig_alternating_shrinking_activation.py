@@ -135,7 +135,7 @@ def plot_activation(N, theta, spike_probs, pairwise_theta, pairwise_spike_probs,
 
 if __name__ == "__main__":
     # Example parameters
-    N = 30
+    N = 10
     
     #Polylogarithmic exponential distribution
     #f = 50.0
@@ -143,8 +143,8 @@ if __name__ == "__main__":
     # Cj_func = lambda j: 1 / j**m
 
     #Shifted-geometric exponential distribution
-    f = 80#80 #30.0
-    tau = 0.9#0.8 #0.8
+    f = 80 #30.0
+    tau = 0.8 #0.8
     Cj_func = lambda j: tau**j
 
     # Convert Cj to theta using the existing function
