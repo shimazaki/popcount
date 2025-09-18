@@ -145,16 +145,13 @@ def gibbs_sampler(N, f, Cj_func, h_func, steps=10000, burn_in=1000, seed=None):
     pbar = tqdm(total=steps, desc="Gibbs sampling")
     
     for step in range(steps):
-        # Store the previous state for synchronous updates
-        x_prev = x.copy()
-        n_prev = n
+        # Permuted Gibbs updates - randomize update order each step
+        update_order = np.random.permutation(N)
         
-        # Compute probabilities for all neurons based on previous state
-        probs_1 = np.zeros(N)
-        for i in range(N):
-            xi_prev = x_prev[i]
-            # n_except_i: spike count of all neurons except neuron i from previous state
-            n_except_i = n_prev - xi_prev
+        for i in update_order:
+            xi = x[i]
+            # n_except_i: spike count of all neurons except neuron i
+            n_except_i = n - xi
 
             # Calculate unnormalized probabilities for x[i]=0 and x[i]=1
             # If x[i]=0, total spike count is n_except_i
@@ -162,15 +159,10 @@ def gibbs_sampler(N, f, Cj_func, h_func, steps=10000, burn_in=1000, seed=None):
             # If x[i]=1, total spike count is n_except_i + 1
             p1 = h_func(n_except_i + 1) * np.exp(-f * S(n_except_i + 1))
 
-            # Probability of setting x[i]=1, given the rest (from previous state)
-            probs_1[i] = p1 / (p0 + p1)
-        
-        # Synchronously update all neurons
-        for i in range(N):
-            x[i] = 1 if np.random.rand() < probs_1[i] else 0
-        
-        # Update total spike count
-        n = np.sum(x)
+            # Probability of setting x[i]=1, given the rest
+            prob_1 = p1 / (p0 + p1)
+            x[i] = 1 if np.random.rand() < prob_1 else 0
+            n = n_except_i + x[i]  # Update current total spike count
 
         if step >= burn_in:
             samples.append(x.copy())
