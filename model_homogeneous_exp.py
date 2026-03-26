@@ -51,6 +51,7 @@ def log_homogeneous_probabilities(N, K, theta, h=None):
         h = lambda n: 1.0
     if len(theta) != K:
         raise ValueError(f"Length of theta ({len(theta)}) must be equal to K ({K}).")
+    theta_int = np.concatenate(([0.0], theta))
     ns = np.arange(N+1)
 
     # Compute log binomial coefficients C(N,n)
@@ -61,10 +62,11 @@ def log_homogeneous_probabilities(N, K, theta, h=None):
     # Compute log base rates h(n)
     log_h = np.log([h(n) for n in ns])
     
-    # Build C_matrix[n, j] = C(n, j+1) for j=0..K-1, then matrix-multiply
-    ks = np.arange(1, K + 1)
-    C_matrix = sp.comb(ns[:, None], ks[None, :])  # shape (N+1, K)
-    exponents = C_matrix @ theta
+    # Sum up to min(n, K)
+    exponents = np.array([
+        sum(sp.comb(n, k) * theta_int[k] for k in range(1, min(n, K) + 1))
+        for n in ns
+    ])
 
     # Combine terms and normalize
     L = log_binom + log_h + exponents
@@ -84,9 +86,9 @@ def compute_sufficient_statistics(ns, K):
         array: S[k-1] = Σ_i C(n_i, k) for k=1..K.
     """
     S = np.zeros(K)
-    ns_arr = np.asarray(ns, dtype=float)
-    for k in range(1, K + 1):
-        S[k-1] = np.sum(sp.comb(ns_arr, k))
+    for n in ns:
+        for k in range(1, K + 1):
+            S[k-1] += sp.comb(n, k)
     return S
 
 def compute_map_gradient(N, K, S, M, h=None, q=None, theta=None):
