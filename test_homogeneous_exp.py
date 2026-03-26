@@ -1,3 +1,4 @@
+import math
 import numpy as np
 from model_homogeneous_exp import (
     homogeneous_probabilities,
@@ -51,7 +52,7 @@ def test_estimation_functions():
     # Generate some test data
     theta_true = np.random.randn(K)
     samples = sample_counts(N, theta_true, size=M)
-    S = np.array([sum(np.array([np.math.comb(n, k) for n in samples])) for k in range(1, K+1)])
+    S = np.array([sum(np.array([math.comb(n, k) for n in samples])) for k in range(1, K+1)])
     
     # Test MAP estimation
     print("\n1. Testing MAP estimation:")
@@ -71,8 +72,8 @@ def test_estimation_functions():
     
     # Test ML estimation
     print("\n4. Testing ML estimation:")
-    theta_ml, res = estimate_ml_parameters(N, samples)
-    print("ML estimation successful:", res.success)
+    res_ml = estimate_ml_parameters(N, samples)
+    print("ML estimation successful:", res_ml.success)
 
 if __name__ == "__main__":
     np.random.seed(42)
