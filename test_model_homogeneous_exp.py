@@ -48,7 +48,7 @@ class TestHomogeneousProbabilities:
         theta = np.array([-1, 0.5, -0.2, 0.1, 0])
         h = lambda n: 1
         
-        logP, logZ = mhe.log_homogeneous_probabilities(N, theta, h)
+        logP, logZ = mhe.log_homogeneous_probabilities(N, len(theta), theta, h)
         
         # Test that exp(logP) gives valid probabilities
         probs = np.exp(logP)
@@ -120,7 +120,7 @@ class TestParameterEstimation:
         S = mhe.compute_sufficient_statistics(samples, N)
         M = len(samples)
         
-        result = mhe.estimate_map_parameters(N, S, M, h, q)
+        result = mhe.estimate_map_parameters(N, N, S, M, h, q, np.zeros(N))
         
         assert result.success
         assert len(result.x) == N
@@ -134,7 +134,7 @@ class TestParameterEstimation:
         q = np.ones(N) * 1.0
         theta = np.zeros(N)
         
-        grad = mhe.compute_map_gradient(N, S, M, h, q, theta)
+        grad = mhe.compute_map_gradient(N, N, S, M, h, q, theta)
         
         # Gradient should have same dimension as theta
         assert len(grad) == N
@@ -153,7 +153,7 @@ class TestPosteriorCovariance:
         q = np.ones(N) * 1.0
         M = 100
         
-        Sigma = mhe.compute_posterior_covariance(N, theta_map, h, q, M)
+        Sigma = mhe.compute_posterior_covariance(N, N, theta_map, h, q, M)
         
         # Check shape
         assert Sigma.shape == (N, N)
@@ -179,7 +179,7 @@ class TestEMAlgorithm:
         
         # Run EM
         q_init = np.ones(N) * 1.0
-        theta_map, Sigma, q, res = mhe.em_update(N, samples, h, q_init, max_iter=20)
+        theta_map, Sigma, q, res = mhe.em_update(N, samples, h, K=N, q_init=q_init, max_iter=20)
         
         # Check outputs
         assert res.success
