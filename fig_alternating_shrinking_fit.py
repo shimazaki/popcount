@@ -10,7 +10,7 @@ import model_alternating_shrinking
 import model_homogeneous_exp as probability
 from scipy.special import comb
 
-def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None):
+def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta, Sigma=None, sample_probs=None):
     """
     Create a figure comparing true and estimated probabilities and parameters.
     
@@ -28,12 +28,16 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
         Estimated model parameters
     Sigma : ndarray, optional
         Posterior covariance matrix for parameter uncertainty
+    sample_probs : ndarray, optional
+        Sampling-based probability distribution P(n)
     """
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
 
     # Plot probabilities in linear scale
     ax1.plot(true_probs, 'o-', color='blue', label='True probabilities')
     ax1.plot(est_probs, 'x-', color='red', label='Estimated probabilities')
+    if sample_probs is not None:
+        ax1.plot(sample_probs, 's-', color='green', label='Sampling-based', alpha=0.7)
     ax1.legend()
     ax1.set_xlim(0, N)
     ax1.set_xlabel('Count (n)')
@@ -44,6 +48,8 @@ def plot_probability_comparison(true_probs, est_probs, N, true_theta, est_theta,
     # Plot probabilities in log scale
     ax2.plot(true_probs, 'o-', color='blue', label='True probabilities')
     ax2.plot(est_probs, 'x-', color='red', label='Estimated probabilities')
+    if sample_probs is not None:
+        ax2.plot(sample_probs, 's-', color='green', label='Sampling-based', alpha=0.7)
     ax2.legend()
     ax2.set_xlim(0, N)
     ax2.set_xlabel('Count (n)')
@@ -80,23 +86,39 @@ if __name__ == "__main__":
     N = 10
     K = 2  # Maximum order of interaction (second-order model)
     
-    f = 1.0  # sparsity-inducing parameter
-    m = 0.1   # power law exponent
-    Cj_func = lambda j: 1 / j**m
+    # f = 1 # sparsity-inducing parameter
+    # m = 1   # power law exponent
+    # Cj_func = lambda j: 1 / j**m
 
-    f = 30
-    tau = .7
+    f = 80
+    tau = .8
     Cj_func = lambda j: tau**j
 
+    # Sampling method selection
+    use_gibbs = True  # Set to True for Gibbs sampling, False for exact sampling
+    
     # Compute true probabilities
     true_probs = model_alternating_shrinking.compute_n_spike_pmf_with_func(N, f, Cj_func)
 
     # Generate samples and fit using MAP with EM
-    sample_size = 500
-    samples = model_alternating_shrinking.sample_spike_counts(N, f, Cj_func, size=sample_size)
+    sample_size = 50000
+    h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
+    
+    if use_gibbs:
+        gibbs_samples = model_alternating_shrinking.gibbs_sampler(N, f, Cj_func, h_func, 
+                                                                 steps=sample_size+1000, burn_in=1000, seed=42)
+        samples = np.sum(gibbs_samples, axis=1)
+    else:
+        samples = model_alternating_shrinking.sample_spike_counts(N, f, Cj_func, size=sample_size)
+    
+    # Compute sampling-based probability distribution
+    sample_probs = np.zeros(N + 1)
+    for n in range(N + 1):
+        sample_probs[n] = np.sum(samples == n) / len(samples)
+    
+    # Fittig model
     q = np.ones(K) * 1.0  # prior variances for K-th order model
     theta0 = np.zeros(K)
-    h_func = lambda n: 1.0 / comb(N, n) if 0 <= n <= N else 0.0
 
     theta_est, Sigma, q, res = probability.em_update(N, samples, h_func, K=K)
     #theta_est = probability.estimate_ml_parameters(N, samples, h=h_func).x
@@ -107,6 +129,10 @@ if __name__ == "__main__":
     true_theta = model_alternating_shrinking.cj_to_theta(Cj_original, f)
 
     print("True theta:", true_theta)
-    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_est, Sigma)
+    print("Sampling-based probabilities (first 5):", sample_probs[:5])
+    print("True probabilities (first 5):", true_probs[:5])
+    print("Estimated probabilities (first 5):", est_probs[:5])
+    
+    fig = plot_probability_comparison(true_probs, est_probs, N, true_theta, theta_est, Sigma, sample_probs)
     plt.savefig('fig/fig_alternating_shrinking_fit.png', dpi=300, bbox_inches='tight')
     plt.show()
