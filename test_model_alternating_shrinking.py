@@ -287,7 +287,7 @@ class TestIntegration:
         
         # Estimate using EM
         q_init = np.ones(N) * 1.0
-        theta_map, Sigma, q, res = mhe.em_update(N, samples, h, q_init, max_iter=50)
+        theta_map, Sigma, q, res = mhe.em_update(N, samples, h, q_init=q_init, max_iter=50)
         
         # Parameters should be reasonably close
         assert res.success

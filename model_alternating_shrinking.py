@@ -230,6 +230,30 @@ def theta_to_cj(theta, f):
     return C
 
 
+def compute_alternating_theta(N, f, Cj_func):
+    """
+    Convenience wrapper: compute theta parameters from (N, f, Cj_func).
+
+    Builds the C_j array from Cj_func and delegates to cj_to_theta.
+
+    Parameters
+    ----------
+    N : int
+        System size (number of neurons)
+    f : float
+        Sparsity-inducing parameter
+    Cj_func : callable
+        Function returning C_j for j=1..N
+
+    Returns
+    -------
+    theta : list
+        Natural parameters theta_1..theta_N
+    """
+    C = [Cj_func(j) for j in range(1, N + 1)]
+    return np.array(cj_to_theta(C, f))
+
+
 if __name__ == "__main__":
     # Parameters
     N = 10

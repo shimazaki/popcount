@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.special as sp
 from model_homogeneous_exp import (
     homogeneous_probabilities,
     log_homogeneous_probabilities,
@@ -51,28 +52,31 @@ def test_estimation_functions():
     # Generate some test data
     theta_true = np.random.randn(K)
     samples = sample_counts(N, theta_true, size=M)
-    S = np.array([sum(np.array([np.math.comb(n, k) for n in samples])) for k in range(1, K+1)])
+    S = np.array([sum(np.array([int(sp.comb(n, k, exact=True)) for n in samples])) for k in range(1, K+1)])
     
     # Test MAP estimation
     print("\n1. Testing MAP estimation:")
-    res = estimate_map_parameters(N, K, S, M)
+    q = np.ones(K) * 10.0
+    theta0 = np.zeros(K)
+    res = estimate_map_parameters(N, K, S, M, q=q, theta=theta0)
     print("MAP estimation successful:", res.success)
-    
+
     # Test posterior covariance
     print("\n2. Testing posterior covariance:")
-    Sigma = compute_posterior_covariance(N, K, res.x)
+    Sigma = compute_posterior_covariance(N, K, res.x, q=q, M=M)
     print("Covariance matrix shape:", Sigma.shape)
-    
+
     # Test EM update
     print("\n3. Testing EM update:")
-    theta_est, Sigma, q, res = em_update(N, samples)
+    theta_est, Sigma, q, res = em_update(N, samples, K=K)
     print("EM estimation successful:", res.success)
     print("Final q values:", q)
-    
+
     # Test ML estimation
     print("\n4. Testing ML estimation:")
-    theta_ml, res = estimate_ml_parameters(N, samples)
+    res = estimate_ml_parameters(N, samples, K=K)
     print("ML estimation successful:", res.success)
+    print("ML theta:", res.x)
 
 if __name__ == "__main__":
     np.random.seed(42)
